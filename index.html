@@ -35,7 +35,6 @@
             const [tarifaKwh, setTarifaKwh] = useState('0.85');
             const [tarifaId, setTarifaId] = useState(null);
             const [savingTarifa, setSavingTarifa] = useState(false);
-            const [editingStatus, setEditingStatus] = useState(null);
 
             useEffect(() => {
                 const authStatus = localStorage.getItem('oby_admin_auth');
@@ -135,7 +134,12 @@
                 }
             };
 
-            const atualizarStatus = async (propostaId, novoStatus) => {
+            const alternarStatus = async (propostaId, statusAtual) => {
+                const statusOptions = ['pendente', 'aprovado', 'reprovado', 'lista_espera'];
+                const currentIndex = statusOptions.indexOf(statusAtual);
+                const nextIndex = (currentIndex + 1) % statusOptions.length;
+                const novoStatus = statusOptions[nextIndex];
+                
                 try {
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
                         method: 'PATCH',
@@ -148,9 +152,7 @@
                         body: JSON.stringify({ status: novoStatus })
                     });
                     if (response.ok) {
-                        alert('✅ Status atualizado!');
                         carregarPropostas();
-                        setEditingStatus(null);
                     }
                 } catch (error) {
                     alert('Erro ao atualizar status');
@@ -162,86 +164,146 @@
                 const doc = new jsPDF();
                 
                 const nomeCompleto = proposta.tipo_pessoa === 'fisica' 
-                    ? `${proposta.nome} ${proposta.sobrenome}`
-                    : proposta.nome_fantasia;
+                    ? `${proposta.nome} ${proposta.sobrenome}`.toUpperCase()
+                    : proposta.nome_fantasia.toUpperCase();
                 
                 const documento = proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj;
+                const tipoDocumento = proposta.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ';
                 const desconto = proposta.desconto || 15;
-                const dataAtual = new Date().toLocaleDateString('pt-BR');
+                const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                const cidade = proposta.cidade || 'Curitiba';
                 
-                // Cabeçalho
-                doc.setFontSize(16);
+                // PÁGINA 1
+                doc.setFontSize(14);
                 doc.setFont('helvetica', 'bold');
-                doc.text('TERMO DE ADESÃO', 105, 20, { align: 'center' });
-                doc.text('CONTRATO DE CONSÓRCIO OBY ENERGY', 105, 28, { align: 'center' });
+                doc.text('ANEXO III', 105, 20, { align: 'center' });
+                
+                doc.setFontSize(12);
+                doc.text('TERMO DE ADESÃO AO CONTRATO DE CONSÓRCIO', 105, 28, { align: 'center' });
+                doc.text('OBY ENERGY', 105, 35, { align: 'center' });
                 
                 doc.setFontSize(10);
+                doc.setFont('helvetica', 'italic');
+                doc.text('(CLÁUSULA 1.2 DO CONTRATO DE CONSÓRCIO)', 105, 42, { align: 'center' });
+                
+                // Texto introdutório
                 doc.setFont('helvetica', 'normal');
+                let y = 55;
+                doc.text('Pelo presente instrumento,', 20, y);
                 
-                // Dados do Cliente
-                let y = 45;
-                doc.text('DADOS DO CONSORCIADO:', 20, y);
+                y += 10;
+                doc.setFont('helvetica', 'bold');
+                doc.text('(i) OBY ENERGY LTDA', 20, y);
+                doc.setFont('helvetica', 'normal');
+                y += 5;
+                const textoOby = 'sociedade empresária limitada, inscrita no CNPJ/MF sob o nº [CNPJ OBY], com sede em Curitiba, Estado do Paraná ("SPE" ou "Líder"); e';
+                const linhasOby = doc.splitTextToSize(textoOby, 170);
+                doc.text(linhasOby, 20, y);
+                y += linhasOby.length * 5 + 5;
+                
+                doc.setFont('helvetica', 'bold');
+                doc.text(`(ii) ${nomeCompleto}`, 20, y);
+                doc.setFont('helvetica', 'normal');
+                y += 5;
+                const textoCliente = `${proposta.tipo_pessoa === 'fisica' ? 'pessoa física' : 'pessoa jurídica de direito privado'}, inscrit${proposta.tipo_pessoa === 'fisica' ? 'o' : 'a'} no ${tipoDocumento} sob o nº ${documento}, residente e domiciliad${proposta.tipo_pessoa === 'fisica' ? 'o' : 'a'} em ${proposta.cidade} - ${proposta.estado} ("Parte Consorciada").`;
+                const linhasCliente = doc.splitTextToSize(textoCliente, 170);
+                doc.text(linhasCliente, 20, y);
+                y += linhasCliente.length * 5 + 10;
+                
+                // RESOLVEM
+                doc.setFont('helvetica', 'bold');
+                doc.text('RESOLVEM,', 20, y);
+                doc.setFont('helvetica', 'normal');
+                y += 5;
+                const textoResolvem = 'de mútuo e comum acordo, celebrar este Termo de Adesão ao Contrato de Consórcio ("Termo de Adesão"), o qual será regido pelas seguintes disposições:';
+                const linhasResolvem = doc.splitTextToSize(textoResolvem, 170);
+                doc.text(linhasResolvem, 20, y);
+                y += linhasResolvem.length * 5 + 10;
+                
+                // CLÁUSULA PRIMEIRA
+                doc.setFont('helvetica', 'bold');
+                doc.text('Cláusula Primeira - Direitos Econômicos e Prazo de Vigência', 20, y);
+                doc.setFont('helvetica', 'normal');
+                y += 7;
+                
+                const clausula11 = `1.1. Por este Termo de Adesão, a Parte Consorciada ingressa no Consórcio OBY ENERGY e compromete-se a cumprir o Contrato de Consórcio celebrado entre a Líder e as demais Partes Consorciadas.`;
+                const linhas11 = doc.splitTextToSize(clausula11, 170);
+                doc.text(linhas11, 20, y);
+                y += linhas11.length * 5 + 8;
+                
+                const clausula12 = `1.2. Os Direitos Econômicos iniciais da Parte Consorciada no Consórcio, definidos de comum acordo, serão aplicados na(s) Unidade(s) Consumidora(s) conforme quadro abaixo:`;
+                const linhas12 = doc.splitTextToSize(clausula12, 170);
+                doc.text(linhas12, 20, y);
+                y += linhas12.length * 5 + 10;
+                
+                // Tabela de Unidades Consumidoras
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'bold');
+                doc.rect(20, y, 170, 8);
+                doc.text('Unidade Consumidora', 25, y + 5);
+                doc.text('Endereço', 80, y + 5);
+                doc.text('Consumo kWh/mês', 150, y + 5);
+                
                 y += 8;
-                doc.text(`Nome/Razão Social: ${nomeCompleto}`, 20, y);
-                y += 6;
-                doc.text(`${proposta.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'}: ${documento}`, 20, y);
-                y += 6;
-                doc.text(`Email: ${proposta.email}`, 20, y);
-                y += 6;
-                doc.text(`Telefone: ${proposta.telefone}`, 20, y);
-                y += 6;
-                doc.text(`Cidade/Estado: ${proposta.cidade} - ${proposta.estado}`, 20, y);
-                
-                // Dados da Instalação
+                doc.setFont('helvetica', 'normal');
+                doc.rect(20, y, 170, 10);
+                doc.text(proposta.numero_instalacao, 25, y + 6);
+                const enderecoUC = `${proposta.cidade} - ${proposta.estado}`;
+                doc.text(enderecoUC, 80, y + 6);
+                doc.text(proposta.consumo_kw.toString(), 155, y + 6);
                 y += 12;
+                
+                doc.setFontSize(10);
+                const clausula121 = `1.2.1. Para fins de esclarecimentos, o Custo Variável considera um Múltiplo de Locação equivalente a um desconto de ${desconto}% sobre o valor da tarifa mensal de energia elétrica praticada pela Distribuidora.`;
+                const linhas121 = doc.splitTextToSize(clausula121, 170);
+                doc.text(linhas121, 20, y);
+                
+                // PÁGINA 2
+                doc.addPage();
+                y = 20;
+                
+                const clausula14 = `1.4. A Parte Consorciada obriga-se a permanecer no Consórcio por 60 (sessenta) meses ("Prazo de Vigência de Participação"), o qual será prorrogado automaticamente por igual período.`;
+                const linhas14 = doc.splitTextToSize(clausula14, 170);
+                doc.text(linhas14, 20, y);
+                y += linhas14.length * 5 + 10;
+                
+                // CLÁUSULA SEGUNDA
                 doc.setFont('helvetica', 'bold');
-                doc.text('DADOS DA INSTALAÇÃO:', 20, y);
+                doc.text('Cláusula Segunda - Obrigações da Parte Consorciada', 20, y);
                 doc.setFont('helvetica', 'normal');
-                y += 8;
-                doc.text(`Nº Instalação: ${proposta.numero_instalacao}`, 20, y);
-                y += 6;
-                doc.text(`Tipo de Conexão: ${proposta.tipo_conexao}`, 20, y);
-                y += 6;
-                doc.text(`Consumo Mensal: ${proposta.consumo_kw} kW`, 20, y);
+                y += 7;
                 
-                // Direitos Econômicos
-                y += 12;
+                const clausula21 = '2.1. A Parte Consorciada declara, neste ato, conhecer o Contrato de Consórcio e obriga-se a cumpri-lo integralmente, sem ressalvas, objeções e/ou restrições, e compromete-se a pagar, pontualmente, todos os Custos Fixos e Custos Variáveis do Consórcio.';
+                const linhas21 = doc.splitTextToSize(clausula21, 170);
+                doc.text(linhas21, 20, y);
+                y += linhas21.length * 5 + 10;
+                
+                // CLÁUSULA TERCEIRA
                 doc.setFont('helvetica', 'bold');
-                doc.text('DIREITOS ECONÔMICOS E DESCONTO:', 20, y);
+                doc.text('Cláusula Terceira - Penalidades', 20, y);
                 doc.setFont('helvetica', 'normal');
-                y += 8;
-                doc.text(`Desconto Aplicado: ${desconto}%`, 20, y);
-                y += 6;
-                doc.text(`Economia Mensal: R$ ${proposta.economia_mensal}`, 20, y);
-                y += 6;
-                doc.text(`Economia Anual: R$ ${proposta.economia_anual}`, 20, y);
+                y += 7;
                 
-                // Cláusulas
-                y += 12;
+                const clausula31 = '3.1. O descumprimento das obrigações pela Parte Consorciada sujeitará ao pagamento de multa de 2% (dois por cento), juros de mora de 1% (um por cento) ao mês e correção monetária pelo IGP-M.';
+                const linhas31 = doc.splitTextToSize(clausula31, 170);
+                doc.text(linhas31, 20, y);
+                y += linhas31.length * 5 + 10;
+                
+                // CLÁUSULA QUARTA
                 doc.setFont('helvetica', 'bold');
-                doc.text('CLÁUSULA PRIMEIRA - PRAZO DE VIGÊNCIA:', 20, y);
+                doc.text('Cláusula Quarta - Disposições Gerais', 20, y);
                 doc.setFont('helvetica', 'normal');
-                y += 8;
-                const textoVigencia = 'A Parte Consorciada obriga-se a permanecer no Consórcio por 60 (sessenta) meses, prorrogável automaticamente por igual período.';
-                const linhasVigencia = doc.splitTextToSize(textoVigencia, 170);
-                doc.text(linhasVigencia, 20, y);
-                y += linhasVigencia.length * 5 + 6;
+                y += 7;
                 
-                doc.setFont('helvetica', 'bold');
-                doc.text('CLÁUSULA SEGUNDA - OBRIGAÇÕES:', 20, y);
-                doc.setFont('helvetica', 'normal');
-                y += 8;
-                const textoObrigacoes = 'A Parte Consorciada compromete-se a pagar pontualmente todos os Custos Fixos e Variáveis do Consórcio, bem como manter seus Direitos Econômicos.';
-                const linhasObrigacoes = doc.splitTextToSize(textoObrigacoes, 170);
-                doc.text(linhasObrigacoes, 20, y);
+                const clausula41 = 'E, por estarem assim justos e contratados, firmam o presente instrumento em 2 (duas) vias de igual teor e forma.';
+                const linhas41 = doc.splitTextToSize(clausula41, 170);
+                doc.text(linhas41, 20, y);
+                y += linhas41.length * 5 + 20;
                 
-                // Rodapé
-                y = 270;
-                doc.text(`Data de Adesão: ${dataAtual}`, 105, y, { align: 'center' });
-                y += 8;
-                doc.text(`Proposta ID: ${proposta.id}`, 105, y, { align: 'center' });
+                // Local e Data
+                doc.text(`${cidade}, ${dataAtual}`, 105, y, { align: 'center' });
                 
-                // Nova página para assinatura
+                // PÁGINA 3 - ASSINATURAS
                 doc.addPage();
                 doc.setFontSize(12);
                 doc.setFont('helvetica', 'bold');
@@ -250,17 +312,27 @@
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
                 
-                // Assinatura Cliente
-                doc.text('_______________________________________', 105, 100, { align: 'center' });
-                doc.text(nomeCompleto, 105, 108, { align: 'center' });
-                doc.text('CONSORCIADO', 105, 115, { align: 'center' });
+                // Linha de assinatura - Cliente
+                doc.text('_____________________________________________', 105, 80, { align: 'center' });
+                doc.setFont('helvetica', 'bold');
+                doc.text(nomeCompleto, 105, 88, { align: 'center' });
+                doc.setFont('helvetica', 'normal');
+                doc.text('PARTE CONSORCIADA', 105, 95, { align: 'center' });
+                doc.text(`${tipoDocumento}: ${documento}`, 105, 102, { align: 'center' });
                 
-                // Assinatura OBY
-                doc.text('_______________________________________', 105, 160, { align: 'center' });
-                doc.text('OBY ENERGY LTDA', 105, 168, { align: 'center' });
-                doc.text('LÍDER DO CONSÓRCIO', 105, 175, { align: 'center' });
+                // Linha de assinatura - OBY Energy
+                doc.text('_____________________________________________', 105, 140, { align: 'center' });
+                doc.setFont('helvetica', 'bold');
+                doc.text('OBY ENERGY LTDA', 105, 148, { align: 'center' });
+                doc.setFont('helvetica', 'normal');
+                doc.text('LÍDER DO CONSÓRCIO', 105, 155, { align: 'center' });
                 
-                doc.save(`Contrato_${nomeCompleto.replace(/\s/g, '_')}_${proposta.id}.pdf`);
+                // Rodapé
+                doc.setFontSize(8);
+                doc.text(`Proposta ID: ${proposta.id} | Gerado em: ${new Date().toLocaleString('pt-BR')}`, 105, 280, { align: 'center' });
+                
+                // Salvar PDF
+                doc.save(`Contrato_OBY_${nomeCompleto.replace(/\s/g, '_')}_${proposta.id}.pdf`);
             };
 
             const propostasFiltradas = propostas.filter(p => {
@@ -355,42 +427,19 @@
                                         <p className="text-gray-600 text-sm">ID: {selectedProposta.id}</p>
                                         <p className="text-gray-600 text-sm">Criado em: {formatarData(selectedProposta.created_at)}</p>
                                     </div>
-                                    <div className="flex gap-2 items-center">
-                                        {editingStatus === selectedProposta.id ? (
-                                            <select
-                                                onChange={(e) => atualizarStatus(selectedProposta.id, e.target.value)}
-                                                className="px-4 py-2 border rounded-lg"
-                                                defaultValue={selectedProposta.status}
-                                            >
-                                                <option value="pendente">Pendente</option>
-                                                <option value="aprovado">Aprovado</option>
-                                                <option value="reprovado">Reprovado</option>
-                                                <option value="lista_espera">Lista de Espera</option>
-                                            </select>
-                                        ) : (
-                                            <>
-                                                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
-                                                    selectedProposta.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
-                                                    selectedProposta.status === 'aprovado' ? 'bg-green-100 text-green-800' :
-                                                    selectedProposta.status === 'reprovado' ? 'bg-red-100 text-red-800' :
-                                                    selectedProposta.status === 'lista_espera' ? 'bg-orange-100 text-orange-800' :
-                                                    'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                    {selectedProposta.status === 'pendente' ? '⏳ Pendente' :
-                                                     selectedProposta.status === 'aprovado' ? '✅ Aprovado' :
-                                                     selectedProposta.status === 'reprovado' ? '❌ Reprovado' :
-                                                     selectedProposta.status === 'lista_espera' ? '📋 Lista de Espera' : 
-                                                     selectedProposta.status}
-                                                </span>
-                                                <button 
-                                                    onClick={() => setEditingStatus(selectedProposta.id)}
-                                                    className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-                                                >
-                                                    Alterar Status
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
+                                    <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                                        selectedProposta.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
+                                        selectedProposta.status === 'aprovado' ? 'bg-green-100 text-green-800' :
+                                        selectedProposta.status === 'reprovado' ? 'bg-red-100 text-red-800' :
+                                        selectedProposta.status === 'lista_espera' ? 'bg-orange-100 text-orange-800' :
+                                        'bg-gray-100 text-gray-800'
+                                    }`}>
+                                        {selectedProposta.status === 'pendente' ? '⏳ Pendente' :
+                                         selectedProposta.status === 'aprovado' ? '✅ Aprovado' :
+                                         selectedProposta.status === 'reprovado' ? '❌ Reprovado' :
+                                         selectedProposta.status === 'lista_espera' ? '📋 Lista de Espera' : 
+                                         selectedProposta.status}
+                                    </span>
                                 </div>
 
                                 <div className="flex gap-3">
@@ -679,7 +728,6 @@
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nome</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cidade</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Data</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Ações</th>
                                                 </tr>
@@ -687,7 +735,7 @@
                                             <tbody className="divide-y divide-gray-200">
                                                 {propostasFiltradas.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                                                        <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
                                                             {loading ? 'Carregando...' : 'Nenhuma proposta encontrada'}
                                                         </td>
                                                     </tr>
@@ -703,37 +751,40 @@
                                                             <td className="px-4 py-3 text-sm text-gray-600">
                                                                 {proposta.cidade} - {proposta.estado}
                                                             </td>
-                                                            <td className="px-4 py-3">
-                                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                                                    proposta.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
-                                                                    proposta.status === 'aprovado' ? 'bg-green-100 text-green-800' :
-                                                                    proposta.status === 'reprovado' ? 'bg-red-100 text-red-800' :
-                                                                    proposta.status === 'lista_espera' ? 'bg-orange-100 text-orange-800' :
-                                                                    'bg-gray-100 text-gray-800'
-                                                                }`}>
-                                                                    {proposta.status === 'pendente' ? 'Pendente' :
-                                                                     proposta.status === 'aprovado' ? 'Aprovado' :
-                                                                     proposta.status === 'reprovado' ? 'Reprovado' : 
-                                                                     proposta.status === 'lista_espera' ? 'Lista de Espera' : proposta.status}
-                                                                </span>
-                                                            </td>
                                                             <td className="px-4 py-3 text-sm text-gray-600">
                                                                 {formatarData(proposta.created_at)}
                                                             </td>
-                                                            <td className="px-4 py-3 flex gap-2">
-                                                                <button
-                                                                    onClick={() => setSelectedProposta(proposta)}
-                                                                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-                                                                >
-                                                                    Ver Detalhes
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => gerarContratoPDF(proposta)}
-                                                                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                                                                    title="Gerar Contrato"
-                                                                >
-                                                                    📄
-                                                                </button>
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex gap-2 items-center">
+                                                                    <button
+                                                                        onClick={() => setSelectedProposta(proposta)}
+                                                                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                                                                        title="Ver Detalhes"
+                                                                    >
+                                                                        👁️ Ver
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => gerarContratoPDF(proposta)}
+                                                                        className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                                                                        title="Gerar Contrato"
+                                                                    >
+                                                                        📄 Contrato
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => alternarStatus(proposta.id, proposta.status)}
+                                                                        className={`px-3 py-1 text-white text-xs rounded hover:opacity-80 ${
+                                                                            proposta.status === 'pendente' ? 'bg-yellow-500' :
+                                                                            proposta.status === 'aprovado' ? 'bg-green-500' :
+                                                                            proposta.status === 'reprovado' ? 'bg-red-500' :
+                                                                            'bg-orange-500'
+                                                                        }`}
+                                                                        title="Alterar Status"
+                                                                    >
+                                                                        {proposta.status === 'pendente' ? '⏳' :
+                                                                         proposta.status === 'aprovado' ? '✅' :
+                                                                         proposta.status === 'reprovado' ? '❌' : '📋'}
+                                                                    </button>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     ))

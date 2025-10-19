@@ -74,7 +74,7 @@
                         }
                     });
                     const data = await response.json();
-                    setPropostas(data.map(p => ({...p, showMenu: false})));
+                    setPropostas(data.map(p => ({...p, showMenu: false, updating: false})));
                 } catch (error) {
                     console.error('Erro ao carregar propostas:', error);
                     alert('Erro ao carregar propostas');
@@ -136,6 +136,13 @@
 
             const atualizarStatus = async (propostaId, novoStatus) => {
                 try {
+                    console.log('Atualizando status...', propostaId, novoStatus);
+                    
+                    // Mostra loading
+                    setPropostas(prev => prev.map(p => 
+                        p.id === propostaId ? {...p, updating: true, showMenu: false} : {...p, showMenu: false}
+                    ));
+
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
                         method: 'PATCH',
                         headers: {
@@ -146,11 +153,32 @@
                         },
                         body: JSON.stringify({ status: novoStatus })
                     });
+
+                    const responseData = await response.json();
+                    console.log('Resposta do Supabase:', response.status, responseData);
+
                     if (response.ok) {
-                        carregarPropostas();
+                        // Atualiza localmente primeiro (feedback instantâneo)
+                        setPropostas(prev => prev.map(p => 
+                            p.id === propostaId ? {...p, status: novoStatus, updating: false} : p
+                        ));
+                        
+                        // Recarrega do banco para garantir sincronização
+                        setTimeout(() => {
+                            carregarPropostas();
+                        }, 500);
+                    } else {
+                        console.error('Erro na resposta:', responseData);
+                        throw new Error(responseData.message || 'Erro ao atualizar');
                     }
                 } catch (error) {
-                    alert('Erro ao atualizar status');
+                    console.error('Erro ao atualizar status:', error);
+                    alert('❌ Erro ao atualizar status: ' + error.message + '\n\nVerifique as permissões RLS no Supabase!');
+                    
+                    // Remove loading em caso de erro
+                    setPropostas(prev => prev.map(p => 
+                        p.id === propostaId ? {...p, updating: false, showMenu: false} : p
+                    ));
                 }
             };
 
@@ -313,25 +341,25 @@
                 doc.addPage();
                 doc.setFontSize(12);
                 doc.setFont('helvetica', 'bold');
-                doc.text('ASSINATURAS', 105, 30, { align: 'center' });
+                doc.text('ASSINATURAS', 105, 80, { align: 'center' });
                 
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
                 
                 // Linha de assinatura - Cliente
-                doc.text('_____________________________________________', 105, 80, { align: 'center' });
+                doc.text('_____________________________________________', 105, 120, { align: 'center' });
                 doc.setFont('helvetica', 'bold');
-                doc.text(nomeCompleto, 105, 88, { align: 'center' });
+                doc.text(nomeCompleto, 105, 128, { align: 'center' });
                 doc.setFont('helvetica', 'normal');
-                doc.text('PARTE CONSORCIADA', 105, 95, { align: 'center' });
-                doc.text(`${tipoDocumento}: ${documento}`, 105, 102, { align: 'center' });
+                doc.text('PARTE CONSORCIADA', 105, 135, { align: 'center' });
+                doc.text(`${tipoDocumento}: ${documento}`, 105, 142, { align: 'center' });
                 
                 // Linha de assinatura - OBY Energy
-                doc.text('_____________________________________________', 105, 140, { align: 'center' });
+                doc.text('_____________________________________________', 105, 180, { align: 'center' });
                 doc.setFont('helvetica', 'bold');
-                doc.text('OBY ENERGY LTDA', 105, 148, { align: 'center' });
+                doc.text('OBY ENERGY LTDA', 105, 188, { align: 'center' });
                 doc.setFont('helvetica', 'normal');
-                doc.text('LÍDER DO CONSÓRCIO', 105, 155, { align: 'center' });
+                doc.text('LÍDER DO CONSÓRCIO', 105, 195, { align: 'center' });
                 
                 // Rodapé
                 doc.setFontSize(8);
@@ -776,7 +804,8 @@
                                                                     <div className="relative">
                                                                         <button
                                                                             onClick={() => toggleStatusMenu(proposta.id)}
-                                                                            className={`px-3 py-1 text-white text-xs rounded hover:opacity-80 ${
+                                                                            disabled={proposta.updating}
+                                                                            className={`px-3 py-1 text-white text-xs rounded hover:opacity-80 disabled:opacity-50 ${
                                                                                 proposta.status === 'pendente' ? 'bg-yellow-500' :
                                                                                 proposta.status === 'aprovado' ? 'bg-green-500' :
                                                                                 proposta.status === 'reprovado' ? 'bg-red-500' :
@@ -784,44 +813,34 @@
                                                                             }`}
                                                                             title="Alterar Status"
                                                                         >
-                                                                            {proposta.status === 'pendente' ? '⏳' :
-                                                                             proposta.status === 'aprovado' ? '✅' :
-                                                                             proposta.status === 'reprovado' ? '❌' : '📋'}
+                                                                            {proposta.updating ? '⏳' : (
+                                                                                proposta.status === 'pendente' ? '⏳' :
+                                                                                proposta.status === 'aprovado' ? '✅' :
+                                                                                proposta.status === 'reprovado' ? '❌' : '📋'
+                                                                            )}
                                                                         </button>
                                                                         {proposta.showMenu && (
                                                                             <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                                                                                 <button
-                                                                                    onClick={() => {
-                                                                                        atualizarStatus(proposta.id, 'pendente');
-                                                                                        toggleStatusMenu(proposta.id);
-                                                                                    }}
+                                                                                    onClick={() => atualizarStatus(proposta.id, 'pendente')}
                                                                                     className="w-full px-3 py-2 text-left text-xs hover:bg-yellow-50 flex items-center gap-2"
                                                                                 >
                                                                                     <span className="text-yellow-600">⏳</span> Pendente
                                                                                 </button>
                                                                                 <button
-                                                                                    onClick={() => {
-                                                                                        atualizarStatus(proposta.id, 'aprovado');
-                                                                                        toggleStatusMenu(proposta.id);
-                                                                                    }}
+                                                                                    onClick={() => atualizarStatus(proposta.id, 'aprovado')}
                                                                                     className="w-full px-3 py-2 text-left text-xs hover:bg-green-50 flex items-center gap-2"
                                                                                 >
                                                                                     <span className="text-green-600">✅</span> Aprovado
                                                                                 </button>
                                                                                 <button
-                                                                                    onClick={() => {
-                                                                                        atualizarStatus(proposta.id, 'reprovado');
-                                                                                        toggleStatusMenu(proposta.id);
-                                                                                    }}
+                                                                                    onClick={() => atualizarStatus(proposta.id, 'reprovado')}
                                                                                     className="w-full px-3 py-2 text-left text-xs hover:bg-red-50 flex items-center gap-2"
                                                                                 >
                                                                                     <span className="text-red-600">❌</span> Reprovado
                                                                                 </button>
                                                                                 <button
-                                                                                    onClick={() => {
-                                                                                        atualizarStatus(proposta.id, 'lista_espera');
-                                                                                        toggleStatusMenu(proposta.id);
-                                                                                    }}
+                                                                                    onClick={() => atualizarStatus(proposta.id, 'lista_espera')}
                                                                                     className="w-full px-3 py-2 text-left text-xs hover:bg-orange-50 flex items-center gap-2"
                                                                                 >
                                                                                     <span className="text-orange-600">📋</span> Lista de Espera

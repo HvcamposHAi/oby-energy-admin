@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBY Energy - Painel Administrativo</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const SUPABASE_URL = 'https://uuaqmwnfjopgjmjjchmw.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1YXFtd25mam9wZ2ptampjaG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1OTEyNzUsImV4cCI6MjA3NjE2NzI3NX0.9ITSBR9SNoZKgvF1AuW4OsL4b8Du5NAXttQpi7B3MO8';
+
+        // Credenciais de login
+        const ADMIN_USER = 'admin';
+        const ADMIN_PASS = 'oby2025';
+
+        function AdminPanel() {
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [propostas, setPropostas] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [selectedProposta, setSelectedProposta] = useState(null);
+            const [filtro, setFiltro] = useState('todos');
+            const [busca, setBusca] = useState('');
+
+            useEffect(() => {
+                const authStatus = localStorage.getItem('oby_admin_auth');
+                if (authStatus === 'true') {
+                    setIsAuthenticated(true);
+                    carregarPropostas();
+                }
+            }, []);
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (username === ADMIN_USER && password === ADMIN_PASS) {
+                    setIsAuthenticated(true);
+                    localStorage.setItem('oby_admin_auth', 'true');
+                    carregarPropostas();
+                } else {
+                    alert('Usuário ou senha incorretos!');
+                }
+            };
+
+            const handleLogout = () => {
+                setIsAuthenticated(false);
+                localStorage.removeItem('oby_admin_auth');
+                setUsername('');
+                setPassword('');
+            };
+
+            const carregarPropostas = async () => {
+                setLoading(true);
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?select=*&order=created_at.desc`, {
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY
+                        }
+                    });
+                    const data = await response.json();
+                    setPropostas(data);
+                } catch (error) {
+                    console.error('Erro ao carregar propostas:', error);
+                    alert('Erro ao carregar propostas');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const propostasFiltradas = propostas.filter(p => {
+                const matchFiltro = filtro === 'todos' || p.status === filtro;
+                const matchBusca = busca === '' || 
+                    p.nome?.toLowerCase().includes(busca.toLowerCase()) ||
+                    p.email?.toLowerCase().includes(busca.toLowerCase()) ||
+                    p.cpf?.includes(busca) ||
+                    p.cnpj?.includes(busca);
+                return matchFiltro && matchBusca;
+            });
+
+            const formatarData = (data) => {
+                if (!data) return '-';
+                return new Date(data).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            };
+
+            if (!isAuthenticated) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+                            <div className="text-center mb-8">
+                                <img src="https://uuaqmwnfjopgjmjjchmw.supabase.co/storage/v1/object/public/logos/Logo%20Oby%20-%20Baixa%20Qualidade.png" alt="OBY Energy" className="h-16 w-auto mx-auto mb-4" />
+                                <h1 className="text-2xl font-bold text-gray-800">Painel Administrativo</h1>
+                                <p className="text-gray-600 text-sm mt-2">Faça login para acessar</p>
+                            </div>
+                            <form onSubmit={handleLogin} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Usuário</label>
+                                    <input
+                                        type="text"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Digite seu usuário"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Digite sua senha"
+                                        required
+                                    />
+                                </div>
+                                <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                                    Entrar
+                                </button>
+                            </form>
+                            <div className="mt-6 p-4 bg-gray-50 rounded-lg text-xs text-gray-600 text-center">
+                                <p className="font-semibold mb-1">Credenciais de Acesso:</p>
+                                <p>Usuário: <code className="bg-gray-200 px-2 py-1 rounded">admin</code></p>
+                                <p>Senha: <code className="bg-gray-200 px-2 py-1 rounded">oby2025</code></p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (selectedProposta) {
+                return (
+                    <div className="min-h-screen bg-gray-50">
+                        <nav className="bg-white shadow-sm border-b">
+                            <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                                <div className="flex items-center gap-4">
+                                    <img src="https://uuaqmwnfjopgjmjjchmw.supabase.co/storage/v1/object/public/logos/Logo%20Oby%20-%20Baixa%20Qualidade.png" alt="OBY Energy" className="h-10" />
+                                    <h1 className="text-xl font-bold text-gray-800">Detalhes da Proposta</h1>
+                                </div>
+                                <button onClick={() => setSelectedProposta(null)} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                    ← Voltar
+                                </button>
+                            </div>
+                        </nav>
+
+                        <div className="max-w-7xl mx-auto p-6">
+                            <div className="bg-white rounded-xl shadow-lg p-6 space-y-6">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-gray-800">
+                                            {selectedProposta.tipo_pessoa === 'fisica' 
+                                                ? `${selectedProposta.nome} ${selectedProposta.sobrenome}`
+                                                : selectedProposta.nome_fantasia}
+                                        </h2>
+                                        <p className="text-gray-600 text-sm">ID: {selectedProposta.id}</p>
+                                        <p className="text-gray-600 text-sm">Criado em: {formatarData(selectedProposta.created_at)}</p>
+                                    </div>
+                                    <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                                        selectedProposta.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
+                                        selectedProposta.status === 'lista_espera' ? 'bg-orange-100 text-orange-800' :
+                                        'bg-gray-100 text-gray-800'
+                                    }`}>
+                                        {selectedProposta.status === 'pendente' ? '⏳ Pendente' :
+                                         selectedProposta.status === 'lista_espera' ? '📋 Lista de Espera' : selectedProposta.status}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-blue-50 p-4 rounded-lg">
+                                        <h3 className="font-bold text-lg mb-3 text-blue-800">📍 Dados de Contato</h3>
+                                        <div className="space-y-2 text-sm">
+                                            <p><strong>Email:</strong> {selectedProposta.email}</p>
+                                            <p><strong>Telefone:</strong> {selectedProposta.telefone}</p>
+                                            <p><strong>CEP:</strong> {selectedProposta.cep}</p>
+                                            <p><strong>Cidade:</strong> {selectedProposta.cidade} - {selectedProposta.estado}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-green-50 p-4 rounded-lg">
+                                        <h3 className="font-bold text-lg mb-3 text-green-800">⚡ Dados da Instalação</h3>
+                                        <div className="space-y-2 text-sm">
+                                            <p><strong>Tipo de Conexão:</strong> {selectedProposta.tipo_conexao}</p>
+                                            <p><strong>Consumo Mensal:</strong> {selectedProposta.consumo_kw} kW</p>
+                                            <p><strong>Nº Instalação:</strong> {selectedProposta.numero_instalacao}</p>
+                                            {selectedProposta.numero_cliente && <p><strong>Nº Cliente:</strong> {selectedProposta.numero_cliente}</p>}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-purple-50 p-4 rounded-lg">
+                                        <h3 className="font-bold text-lg mb-3 text-purple-800">💰 Economia</h3>
+                                        <div className="space-y-2 text-sm">
+                                            <p><strong>Economia Mensal:</strong> R$ {selectedProposta.economia_mensal}</p>
+                                            <p><strong>Economia Anual:</strong> R$ {selectedProposta.economia_anual}</p>
+                                            <p><strong>Desconto:</strong> {selectedProposta.desconto}%</p>
+                                            {selectedProposta.cupom && <p><strong>Cupom:</strong> {selectedProposta.cupom}</p>}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <h3 className="font-bold text-lg mb-3 text-gray-800">📄 Documentos</h3>
+                                        <div className="space-y-2 text-sm">
+                                            {selectedProposta.tipo_pessoa === 'fisica' ? (
+                                                <>
+                                                    <p><strong>CPF:</strong> {selectedProposta.cpf}</p>
+                                                    <p><strong>RG:</strong> {selectedProposta.rg}</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p><strong>CNPJ:</strong> {selectedProposta.cnpj}</p>
+                                                    <p><strong>Nome Fantasia:</strong> {selectedProposta.nome_fantasia}</p>
+                                                    <p><strong>Razão Social:</strong> {selectedProposta.razao_social}</p>
+                                                    <p><strong>Representante 1:</strong> {selectedProposta.representante_legal_1}</p>
+                                                    {selectedProposta.representante_legal_2 && (
+                                                        <p><strong>Representante 2:</strong> {selectedProposta.representante_legal_2}</p>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-gray-50 p-6 rounded-lg">
+                                    <h3 className="font-bold text-lg mb-4 text-gray-800">📎 Arquivos Enviados</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {selectedProposta.url_conta_energia && (
+                                            <a href={selectedProposta.url_conta_energia} target="_blank" rel="noopener noreferrer" 
+                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                                <span className="text-2xl">📄</span>
+                                                <span className="text-sm font-medium">Conta de Energia</span>
+                                            </a>
+                                        )}
+                                        {selectedProposta.url_rg_frente && (
+                                            <a href={selectedProposta.url_rg_frente} target="_blank" rel="noopener noreferrer"
+                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                                <span className="text-2xl">🆔</span>
+                                                <span className="text-sm font-medium">RG/CNH Frente</span>
+                                            </a>
+                                        )}
+                                        {selectedProposta.url_rg_verso && (
+                                            <a href={selectedProposta.url_rg_verso} target="_blank" rel="noopener noreferrer"
+                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                                <span className="text-2xl">🆔</span>
+                                                <span className="text-sm font-medium">RG/CNH Verso</span>
+                                            </a>
+                                        )}
+                                        {selectedProposta.url_contrato_social && (
+                                            <a href={selectedProposta.url_contrato_social} target="_blank" rel="noopener noreferrer"
+                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                                <span className="text-2xl">📋</span>
+                                                <span className="text-sm font-medium">Contrato Social</span>
+                                            </a>
+                                        )}
+                                        {selectedProposta.url_rg_rep_1_frente && (
+                                            <a href={selectedProposta.url_rg_rep_1_frente} target="_blank" rel="noopener noreferrer"
+                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                                <span className="text-2xl">👤</span>
+                                                <span className="text-sm font-medium">RG Rep. 1 Frente</span>
+                                            </a>
+                                        )}
+                                        {selectedProposta.url_rg_rep_1_verso && (
+                                            <a href={selectedProposta.url_rg_rep_1_verso} target="_blank" rel="noopener noreferrer"
+                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                                <span className="text-2xl">👤</span>
+                                                <span className="text-sm font-medium">RG Rep. 1 Verso</span>
+                                            </a>
+                                        )}
+                                        {selectedProposta.url_rg_rep_2_frente && (
+                                            <a href={selectedProposta.url_rg_rep_2_frente} target="_blank" rel="noopener noreferrer"
+                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                                <span className="text-2xl">👤</span>
+                                                <span className="text-sm font-medium">RG Rep. 2 Frente</span>
+                                            </a>
+                                        )}
+                                        {selectedProposta.url_rg_rep_2_verso && (
+                                            <a href={selectedProposta.url_rg_rep_2_verso} target="_blank" rel="noopener noreferrer"
+                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                                <span className="text-2xl">👤</span>
+                                                <span className="text-sm font-medium">RG Rep. 2 Verso</span>
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <nav className="bg-white shadow-sm border-b">
+                        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                                <img src="https://uuaqmwnfjopgjmjjchmw.supabase.co/storage/v1/object/public/logos/Logo%20Oby%20-%20Baixa%20Qualidade.png" alt="OBY Energy" className="h-10" />
+                                <h1 className="text-xl font-bold text-gray-800">Painel Administrativo</h1>
+                            </div>
+                            <button onClick={handleLogout} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                Sair
+                            </button>
+                        </div>
+                    </nav>
+
+                    <div className="max-w-7xl mx-auto p-6">
+                        <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="bg-white p-6 rounded-xl shadow">
+                                <p className="text-gray-600 text-sm">Total de Propostas</p>
+                                <p className="text-3xl font-bold text-blue-600">{propostas.length}</p>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow">
+                                <p className="text-gray-600 text-sm">Pendentes</p>
+                                <p className="text-3xl font-bold text-yellow-600">
+                                    {propostas.filter(p => p.status === 'pendente').length}
+                                </p>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow">
+                                <p className="text-gray-600 text-sm">Lista de Espera</p>
+                                <p className="text-3xl font-bold text-orange-600">
+                                    {propostas.filter(p => p.status === 'lista_espera').length}
+                                </p>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow">
+                                <button onClick={carregarPropostas} disabled={loading} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                                    {loading ? 'Carregando...' : '🔄 Atualizar'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-lg p-6">
+                            <div className="mb-6 flex flex-col md:flex-row gap-4">
+                                <input
+                                    type="text"
+                                    placeholder="🔍 Buscar por nome, email, CPF ou CNPJ..."
+                                    value={busca}
+                                    onChange={(e) => setBusca(e.target.value)}
+                                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                />
+                                <select
+                                    value={filtro}
+                                    onChange={(e) => setFiltro(e.target.value)}
+                                    className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="todos">Todos os Status</option>
+                                    <option value="pendente">Pendente</option>
+                                    <option value="lista_espera">Lista de Espera</option>
+                                </select>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50 border-b-2 border-gray-200">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nome</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cidade</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Data</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {propostasFiltradas.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                                                    {loading ? 'Carregando...' : 'Nenhuma proposta encontrada'}
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            propostasFiltradas.map((proposta) => (
+                                                <tr key={proposta.id} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                        {proposta.tipo_pessoa === 'fisica' 
+                                                            ? `${proposta.nome} ${proposta.sobrenome}`
+                                                            : proposta.nome_fantasia}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-600">{proposta.email}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-600">
+                                                        {proposta.cidade} - {proposta.estado}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                            proposta.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
+                                                            proposta.status === 'lista_espera' ? 'bg-orange-100 text-orange-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                            {proposta.status === 'pendente' ? 'Pendente' : 
+                                                             proposta.status === 'lista_espera' ? 'Lista de Espera' : proposta.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-600">
+                                                        {formatarData(proposta.created_at)}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <button
+                                                            onClick={() => setSelectedProposta(proposta)}
+                                                            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                                                        >
+                                                            Ver Detalhes
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<AdminPanel />, document.getElementById('root'));
+    </script>
+</body>
+</html>

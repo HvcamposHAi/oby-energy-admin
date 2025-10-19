@@ -8,6 +8,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -34,6 +35,7 @@
             const [tarifaKwh, setTarifaKwh] = useState('0.85');
             const [tarifaId, setTarifaId] = useState(null);
             const [savingTarifa, setSavingTarifa] = useState(false);
+            const [editingStatus, setEditingStatus] = useState(null);
 
             useEffect(() => {
                 const authStatus = localStorage.getItem('oby_admin_auth');
@@ -133,6 +135,134 @@
                 }
             };
 
+            const atualizarStatus = async (propostaId, novoStatus) => {
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify({ status: novoStatus })
+                    });
+                    if (response.ok) {
+                        alert('✅ Status atualizado!');
+                        carregarPropostas();
+                        setEditingStatus(null);
+                    }
+                } catch (error) {
+                    alert('Erro ao atualizar status');
+                }
+            };
+
+            const gerarContratoPDF = (proposta) => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                const nomeCompleto = proposta.tipo_pessoa === 'fisica' 
+                    ? `${proposta.nome} ${proposta.sobrenome}`
+                    : proposta.nome_fantasia;
+                
+                const documento = proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj;
+                const desconto = proposta.desconto || 15;
+                const dataAtual = new Date().toLocaleDateString('pt-BR');
+                
+                // Cabeçalho
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.text('TERMO DE ADESÃO', 105, 20, { align: 'center' });
+                doc.text('CONTRATO DE CONSÓRCIO OBY ENERGY', 105, 28, { align: 'center' });
+                
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                
+                // Dados do Cliente
+                let y = 45;
+                doc.text('DADOS DO CONSORCIADO:', 20, y);
+                y += 8;
+                doc.text(`Nome/Razão Social: ${nomeCompleto}`, 20, y);
+                y += 6;
+                doc.text(`${proposta.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'}: ${documento}`, 20, y);
+                y += 6;
+                doc.text(`Email: ${proposta.email}`, 20, y);
+                y += 6;
+                doc.text(`Telefone: ${proposta.telefone}`, 20, y);
+                y += 6;
+                doc.text(`Cidade/Estado: ${proposta.cidade} - ${proposta.estado}`, 20, y);
+                
+                // Dados da Instalação
+                y += 12;
+                doc.setFont('helvetica', 'bold');
+                doc.text('DADOS DA INSTALAÇÃO:', 20, y);
+                doc.setFont('helvetica', 'normal');
+                y += 8;
+                doc.text(`Nº Instalação: ${proposta.numero_instalacao}`, 20, y);
+                y += 6;
+                doc.text(`Tipo de Conexão: ${proposta.tipo_conexao}`, 20, y);
+                y += 6;
+                doc.text(`Consumo Mensal: ${proposta.consumo_kw} kW`, 20, y);
+                
+                // Direitos Econômicos
+                y += 12;
+                doc.setFont('helvetica', 'bold');
+                doc.text('DIREITOS ECONÔMICOS E DESCONTO:', 20, y);
+                doc.setFont('helvetica', 'normal');
+                y += 8;
+                doc.text(`Desconto Aplicado: ${desconto}%`, 20, y);
+                y += 6;
+                doc.text(`Economia Mensal: R$ ${proposta.economia_mensal}`, 20, y);
+                y += 6;
+                doc.text(`Economia Anual: R$ ${proposta.economia_anual}`, 20, y);
+                
+                // Cláusulas
+                y += 12;
+                doc.setFont('helvetica', 'bold');
+                doc.text('CLÁUSULA PRIMEIRA - PRAZO DE VIGÊNCIA:', 20, y);
+                doc.setFont('helvetica', 'normal');
+                y += 8;
+                const textoVigencia = 'A Parte Consorciada obriga-se a permanecer no Consórcio por 60 (sessenta) meses, prorrogável automaticamente por igual período.';
+                const linhasVigencia = doc.splitTextToSize(textoVigencia, 170);
+                doc.text(linhasVigencia, 20, y);
+                y += linhasVigencia.length * 5 + 6;
+                
+                doc.setFont('helvetica', 'bold');
+                doc.text('CLÁUSULA SEGUNDA - OBRIGAÇÕES:', 20, y);
+                doc.setFont('helvetica', 'normal');
+                y += 8;
+                const textoObrigacoes = 'A Parte Consorciada compromete-se a pagar pontualmente todos os Custos Fixos e Variáveis do Consórcio, bem como manter seus Direitos Econômicos.';
+                const linhasObrigacoes = doc.splitTextToSize(textoObrigacoes, 170);
+                doc.text(linhasObrigacoes, 20, y);
+                
+                // Rodapé
+                y = 270;
+                doc.text(`Data de Adesão: ${dataAtual}`, 105, y, { align: 'center' });
+                y += 8;
+                doc.text(`Proposta ID: ${proposta.id}`, 105, y, { align: 'center' });
+                
+                // Nova página para assinatura
+                doc.addPage();
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('ASSINATURAS', 105, 30, { align: 'center' });
+                
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                
+                // Assinatura Cliente
+                doc.text('_______________________________________', 105, 100, { align: 'center' });
+                doc.text(nomeCompleto, 105, 108, { align: 'center' });
+                doc.text('CONSORCIADO', 105, 115, { align: 'center' });
+                
+                // Assinatura OBY
+                doc.text('_______________________________________', 105, 160, { align: 'center' });
+                doc.text('OBY ENERGY LTDA', 105, 168, { align: 'center' });
+                doc.text('LÍDER DO CONSÓRCIO', 105, 175, { align: 'center' });
+                
+                doc.save(`Contrato_${nomeCompleto.replace(/\s/g, '_')}_${proposta.id}.pdf`);
+            };
+
             const propostasFiltradas = propostas.filter(p => {
                 const matchFiltro = filtro === 'todos' || p.status === filtro;
                 const matchBusca = busca === '' || 
@@ -225,14 +355,51 @@
                                         <p className="text-gray-600 text-sm">ID: {selectedProposta.id}</p>
                                         <p className="text-gray-600 text-sm">Criado em: {formatarData(selectedProposta.created_at)}</p>
                                     </div>
-                                    <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
-                                        selectedProposta.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
-                                        selectedProposta.status === 'lista_espera' ? 'bg-orange-100 text-orange-800' :
-                                        'bg-gray-100 text-gray-800'
-                                    }`}>
-                                        {selectedProposta.status === 'pendente' ? '⏳ Pendente' :
-                                         selectedProposta.status === 'lista_espera' ? '📋 Lista de Espera' : selectedProposta.status}
-                                    </span>
+                                    <div className="flex gap-2 items-center">
+                                        {editingStatus === selectedProposta.id ? (
+                                            <select
+                                                onChange={(e) => atualizarStatus(selectedProposta.id, e.target.value)}
+                                                className="px-4 py-2 border rounded-lg"
+                                                defaultValue={selectedProposta.status}
+                                            >
+                                                <option value="pendente">Pendente</option>
+                                                <option value="aprovado">Aprovado</option>
+                                                <option value="reprovado">Reprovado</option>
+                                                <option value="lista_espera">Lista de Espera</option>
+                                            </select>
+                                        ) : (
+                                            <>
+                                                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                                                    selectedProposta.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
+                                                    selectedProposta.status === 'aprovado' ? 'bg-green-100 text-green-800' :
+                                                    selectedProposta.status === 'reprovado' ? 'bg-red-100 text-red-800' :
+                                                    selectedProposta.status === 'lista_espera' ? 'bg-orange-100 text-orange-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                    {selectedProposta.status === 'pendente' ? '⏳ Pendente' :
+                                                     selectedProposta.status === 'aprovado' ? '✅ Aprovado' :
+                                                     selectedProposta.status === 'reprovado' ? '❌ Reprovado' :
+                                                     selectedProposta.status === 'lista_espera' ? '📋 Lista de Espera' : 
+                                                     selectedProposta.status}
+                                                </span>
+                                                <button 
+                                                    onClick={() => setEditingStatus(selectedProposta.id)}
+                                                    className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                                                >
+                                                    Alterar Status
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={() => gerarContratoPDF(selectedProposta)}
+                                        className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
+                                    >
+                                        📄 Gerar Contrato PDF
+                                    </button>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -453,9 +620,9 @@
                             </div>
                         ) : (
                             <>
-                                <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
                                     <div className="bg-white p-6 rounded-xl shadow">
-                                        <p className="text-gray-600 text-sm">Total de Propostas</p>
+                                        <p className="text-gray-600 text-sm">Total</p>
                                         <p className="text-3xl font-bold text-blue-600">{propostas.length}</p>
                                     </div>
                                     <div className="bg-white p-6 rounded-xl shadow">
@@ -465,7 +632,13 @@
                                         </p>
                                     </div>
                                     <div className="bg-white p-6 rounded-xl shadow">
-                                        <p className="text-gray-600 text-sm">Lista de Espera</p>
+                                        <p className="text-gray-600 text-sm">Aprovados</p>
+                                        <p className="text-3xl font-bold text-green-600">
+                                            {propostas.filter(p => p.status === 'aprovado').length}
+                                        </p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-xl shadow">
+                                        <p className="text-gray-600 text-sm">Lista Espera</p>
                                         <p className="text-3xl font-bold text-orange-600">
                                             {propostas.filter(p => p.status === 'lista_espera').length}
                                         </p>
@@ -493,6 +666,8 @@
                                         >
                                             <option value="todos">Todos os Status</option>
                                             <option value="pendente">Pendente</option>
+                                            <option value="aprovado">Aprovado</option>
+                                            <option value="reprovado">Reprovado</option>
                                             <option value="lista_espera">Lista de Espera</option>
                                         </select>
                                     </div>
@@ -531,22 +706,33 @@
                                                             <td className="px-4 py-3">
                                                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                                                                     proposta.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
+                                                                    proposta.status === 'aprovado' ? 'bg-green-100 text-green-800' :
+                                                                    proposta.status === 'reprovado' ? 'bg-red-100 text-red-800' :
                                                                     proposta.status === 'lista_espera' ? 'bg-orange-100 text-orange-800' :
                                                                     'bg-gray-100 text-gray-800'
                                                                 }`}>
-                                                                    {proposta.status === 'pendente' ? 'Pendente' : 
+                                                                    {proposta.status === 'pendente' ? 'Pendente' :
+                                                                     proposta.status === 'aprovado' ? 'Aprovado' :
+                                                                     proposta.status === 'reprovado' ? 'Reprovado' : 
                                                                      proposta.status === 'lista_espera' ? 'Lista de Espera' : proposta.status}
                                                                 </span>
                                                             </td>
                                                             <td className="px-4 py-3 text-sm text-gray-600">
                                                                 {formatarData(proposta.created_at)}
                                                             </td>
-                                                            <td className="px-4 py-3">
+                                                            <td className="px-4 py-3 flex gap-2">
                                                                 <button
                                                                     onClick={() => setSelectedProposta(proposta)}
                                                                     className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                                                                 >
                                                                     Ver Detalhes
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => gerarContratoPDF(proposta)}
+                                                                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                                                                    title="Gerar Contrato"
+                                                                >
+                                                                    📄
                                                                 </button>
                                                             </td>
                                                         </tr>

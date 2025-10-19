@@ -136,9 +136,6 @@
 
             const atualizarStatus = async (propostaId, novoStatus) => {
                 try {
-                    console.log('Atualizando status...', propostaId, novoStatus);
-                    
-                    // Mostra loading
                     setPropostas(prev => prev.map(p => 
                         p.id === propostaId ? {...p, updating: true, showMenu: false} : {...p, showMenu: false}
                     ));
@@ -154,28 +151,17 @@
                         body: JSON.stringify({ status: novoStatus })
                     });
 
-                    const responseData = await response.json();
-                    console.log('Resposta do Supabase:', response.status, responseData);
-
                     if (response.ok) {
-                        // Atualiza localmente primeiro (feedback instantâneo)
                         setPropostas(prev => prev.map(p => 
                             p.id === propostaId ? {...p, status: novoStatus, updating: false} : p
                         ));
-                        
-                        // Recarrega do banco para garantir sincronização
-                        setTimeout(() => {
-                            carregarPropostas();
-                        }, 500);
+                        setTimeout(() => carregarPropostas(), 500);
                     } else {
-                        console.error('Erro na resposta:', responseData);
-                        throw new Error(responseData.message || 'Erro ao atualizar');
+                        throw new Error('Erro ao atualizar');
                     }
                 } catch (error) {
                     console.error('Erro ao atualizar status:', error);
-                    alert('❌ Erro ao atualizar status: ' + error.message + '\n\nVerifique as permissões RLS no Supabase!');
-                    
-                    // Remove loading em caso de erro
+                    alert('❌ Erro ao atualizar status: ' + error.message);
                     setPropostas(prev => prev.map(p => 
                         p.id === propostaId ? {...p, updating: false, showMenu: false} : p
                     ));
@@ -202,7 +188,6 @@
                 const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
                 const cidade = proposta.cidade || 'Curitiba';
                 
-                // PÁGINA 1
                 doc.setFontSize(14);
                 doc.setFont('helvetica', 'bold');
                 doc.text('ANEXO III', 105, 20, { align: 'center' });
@@ -214,10 +199,9 @@
                 doc.setFont('helvetica', 'italic');
                 doc.text('(CLÁUSULA 1.2 DO CONTRATO DE CONSÓRCIO)', 105, 38, { align: 'center' });
                 
-                // Texto introdutório
+                let y = 50;
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(10);
-                let y = 50;
                 doc.text('Pelo presente instrumento,', 20, y);
                 
                 y += 8;
@@ -225,7 +209,7 @@
                 doc.text('(i) UFV FRANCISCO SÁ GERAÇÃO DE ENERGIA ELÉTRICA DISTRIBUIDORA LTDA', 20, y);
                 doc.setFont('helvetica', 'normal');
                 y += 5;
-                const textoUFV = 'com sede na Rua Tupinambás, nº 13, sala 212, Edifício Absoluto, Bairro Melo, no município de Montes Claros, Estado de Minas Gerais, CEP: 39401-509, inscrita no CNPJ sob nº 34.461.745/0001-70 e na Junta Comercial do Estado de Minas Gerais sob o NIRE nº 31211424833, ("SPE" ou "Líder"); e';
+                const textoUFV = 'com sede na Rua Tupinambás, nº 13, sala 212, Edifício Absoluto, Bairro Melo, no município de Montes Claros, Estado de Minas Gerais, CEP: 39401-509, inscrita no CNPJ sob nº 34.461.745/0001-70 ("SPE" ou "Líder"); e';
                 const linhasUFV = doc.splitTextToSize(textoUFV, 170);
                 doc.text(linhasUFV, 20, y);
                 y += linhasUFV.length * 5 + 5;
@@ -234,43 +218,22 @@
                 doc.text(`(ii) ${nomeCompleto}`, 20, y);
                 doc.setFont('helvetica', 'normal');
                 y += 5;
-                const textoCliente = `${proposta.tipo_pessoa === 'fisica' ? 'pessoa física' : 'pessoa jurídica de direito privado'}, inscrit${proposta.tipo_pessoa === 'fisica' ? 'o' : 'a'} no ${tipoDocumento} sob o nº ${documento}, residente e domiciliad${proposta.tipo_pessoa === 'fisica' ? 'o' : 'a'} em ${proposta.cidade} - ${proposta.estado}, neste ato representada na forma dos seus atos constitutivos ("Parte Consorciada").`;
+                const enderecoCompleto = `${proposta.logradouro || ''}, ${proposta.numero_endereco || ''}, ${proposta.bairro || ''}, ${proposta.cidade} - ${proposta.estado}`;
+                const textoCliente = `${proposta.tipo_pessoa === 'fisica' ? 'pessoa física' : 'pessoa jurídica de direito privado'}, inscrit${proposta.tipo_pessoa === 'fisica' ? 'o' : 'a'} no ${tipoDocumento} sob o nº ${documento}, residente e domiciliad${proposta.tipo_pessoa === 'fisica' ? 'o' : 'a'} em ${enderecoCompleto} ("Parte Consorciada").`;
                 const linhasCliente = doc.splitTextToSize(textoCliente, 170);
                 doc.text(linhasCliente, 20, y);
                 y += linhasCliente.length * 5 + 8;
                 
-                const textoPartes = '(Líder e Parte Consorciada, em conjunto, "Partes Consorciadas" ou "Partes" e, isoladamente, "Parte Consorciada" ou "Parte")';
-                const linhasPartes = doc.splitTextToSize(textoPartes, 170);
-                doc.text(linhasPartes, 20, y);
-                y += linhasPartes.length * 5 + 8;
-                
-                // RESOLVEM
                 doc.setFont('helvetica', 'bold');
-                doc.text('RESOLVEM,', 20, y);
-                doc.setFont('helvetica', 'normal');
-                y += 5;
-                const textoResolvem = 'de mútuo e comum acordo, celebrar este Termo de Adesão ao Contrato de Consórcio ("Termo de Adesão"), o qual será regido pelas seguintes disposições:';
-                const linhasResolvem = doc.splitTextToSize(textoResolvem, 170);
-                doc.text(linhasResolvem, 20, y);
-                y += linhasResolvem.length * 5 + 10;
-                
-                // CLÁUSULA PRIMEIRA
-                doc.setFont('helvetica', 'bold');
-                doc.text('Cláusula Primeira - Direitos Econômicos e Prazo de Vigência', 20, y);
+                doc.text('ClÃ¡usula Primeira - Direitos Econômicos e Prazo de Vigência', 20, y);
                 doc.setFont('helvetica', 'normal');
                 y += 7;
                 
-                const clausula11 = `1.1. Por este Termo de Adesão, a Parte Consorciada ingressa no Consórcio UFV FRANCISCO SÁ I.I, com sede na Rua Tupinambás, nº 13, sala 212, Conjunto 12 Bairro Melo, no município de Montes Claros, Minas Gerais, CEP 39401-509, inscrita no CNPJ sob o nº 35.705.491/0001-50, ("Consórcio") e compromete-se a cumprir o Contrato de Consórcio celebrado entre a Líder e as demais Partes Consorciadas ("Contrato"), e as demais normas a ele aplicáveis.`;
+                const clausula11 = `1.1. Por este Termo de Adesão, a Parte Consorciada ingressa no Consórcio UFV FRANCISCO SÁ I.I e compromete-se a cumprir o Contrato de Consórcio.`;
                 const linhas11 = doc.splitTextToSize(clausula11, 170);
                 doc.text(linhas11, 20, y);
                 y += linhas11.length * 5 + 8;
                 
-                const clausula12 = `1.2. Os Direitos Econômicos iniciais da Parte Consorciada no Consórcio, definidos de comum acordo pela Líder e pela Parte Consorciada, corresponderão aos percentuais aplicados na(s) Unidade(s) Consumidora(s) de acordo com o quadro abaixo, os quais poderão variar de tempos e tempos, conforme controles que serão mantidos e atualizados pela Líder e informados à Distribuidora.`;
-                const linhas12 = doc.splitTextToSize(clausula12, 170);
-                doc.text(linhas12, 20, y);
-                y += linhas12.length * 5 + 10;
-                
-                // Tabela de Unidades Consumidoras
                 doc.setFontSize(9);
                 doc.setFont('helvetica', 'bold');
                 doc.rect(20, y, 170, 8);
@@ -288,56 +251,14 @@
                 y += 12;
                 
                 doc.setFontSize(10);
-                const clausula121 = `1.2.1. Para fins de esclarecimentos, o Custo Variável considera um Múltiplo de Locação equivalente a um desconto de ${desconto}% sobre o valor da tarifa mensal de energia elétrica praticada pela Distribuidora.`;
+                const clausula121 = `1.2.1. Para fins de esclarecimentos, o Custo Variável considera um Múltiplo de Locação equivalente a um desconto de ${desconto}% sobre o valor da tarifa mensal de energia elétrica.`;
                 const linhas121 = doc.splitTextToSize(clausula121, 170);
                 doc.text(linhas121, 20, y);
                 
-                // PÁGINA 2
                 doc.addPage();
                 y = 20;
-                
-                const clausula14 = `1.4. A Parte Consorciada obriga-se a permanecer no Consórcio por 60 (sessenta) meses ("Prazo de Vigência de Participação"), o qual será prorrogado automaticamente por igual período.`;
-                const linhas14 = doc.splitTextToSize(clausula14, 170);
-                doc.text(linhas14, 20, y);
-                y += linhas14.length * 5 + 10;
-                
-                // CLÁUSULA SEGUNDA
-                doc.setFont('helvetica', 'bold');
-                doc.text('Cláusula Segunda - Obrigações da Parte Consorciada', 20, y);
-                doc.setFont('helvetica', 'normal');
-                y += 7;
-                
-                const clausula21 = '2.1. A Parte Consorciada declara, neste ato, conhecer o Contrato de Consórcio e obriga-se a cumpri-lo integralmente, sem ressalvas, objeções e/ou restrições, e compromete-se a pagar, pontualmente, todos os Custos Fixos e Custos Variáveis do Consórcio.';
-                const linhas21 = doc.splitTextToSize(clausula21, 170);
-                doc.text(linhas21, 20, y);
-                y += linhas21.length * 5 + 10;
-                
-                // CLÁUSULA TERCEIRA
-                doc.setFont('helvetica', 'bold');
-                doc.text('Cláusula Terceira - Penalidades', 20, y);
-                doc.setFont('helvetica', 'normal');
-                y += 7;
-                
-                const clausula31 = '3.1. O descumprimento das obrigações pela Parte Consorciada sujeitará ao pagamento de multa de 2% (dois por cento), juros de mora de 1% (um por cento) ao mês e correção monetária pelo IGP-M.';
-                const linhas31 = doc.splitTextToSize(clausula31, 170);
-                doc.text(linhas31, 20, y);
-                y += linhas31.length * 5 + 10;
-                
-                // CLÁUSULA QUARTA
-                doc.setFont('helvetica', 'bold');
-                doc.text('Cláusula Quarta - Disposições Gerais', 20, y);
-                doc.setFont('helvetica', 'normal');
-                y += 7;
-                
-                const clausula41 = 'E, por estarem assim justos e contratados, firmam o presente instrumento em 2 (duas) vias de igual teor e forma.';
-                const linhas41 = doc.splitTextToSize(clausula41, 170);
-                doc.text(linhas41, 20, y);
-                y += linhas41.length * 5 + 20;
-                
-                // Local e Data
                 doc.text(`${cidade}, ${dataAtual}`, 105, y, { align: 'center' });
                 
-                // PÁGINA 3 - ASSINATURAS
                 doc.addPage();
                 doc.setFontSize(12);
                 doc.setFont('helvetica', 'bold');
@@ -345,8 +266,6 @@
                 
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
-                
-                // Linha de assinatura - Cliente
                 doc.text('_____________________________________________', 105, 120, { align: 'center' });
                 doc.setFont('helvetica', 'bold');
                 doc.text(nomeCompleto, 105, 128, { align: 'center' });
@@ -354,18 +273,15 @@
                 doc.text('PARTE CONSORCIADA', 105, 135, { align: 'center' });
                 doc.text(`${tipoDocumento}: ${documento}`, 105, 142, { align: 'center' });
                 
-                // Linha de assinatura - OBY Energy
                 doc.text('_____________________________________________', 105, 180, { align: 'center' });
                 doc.setFont('helvetica', 'bold');
                 doc.text('OBY ENERGY LTDA', 105, 188, { align: 'center' });
                 doc.setFont('helvetica', 'normal');
                 doc.text('LÍDER DO CONSÓRCIO', 105, 195, { align: 'center' });
                 
-                // Rodapé
                 doc.setFontSize(8);
                 doc.text(`Proposta ID: ${proposta.id} | Gerado em: ${new Date().toLocaleString('pt-BR')}`, 105, 280, { align: 'center' });
                 
-                // Salvar PDF
                 doc.save(`Contrato_OBY_${nomeCompleto.replace(/\s/g, '_')}_${proposta.id}.pdf`);
             };
 
@@ -402,29 +318,13 @@
                             <form onSubmit={handleLogin} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Usuário</label>
-                                    <input
-                                        type="text"
-                                        value={username}
-                                        onChange={(e) => setUsername(e.target.value)}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Digite seu usuário"
-                                        required
-                                    />
+                                    <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Digite seu usuário" required />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
-                                    <input
-                                        type="password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Digite sua senha"
-                                        required
-                                    />
+                                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Digite sua senha" required />
                                 </div>
-                                <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
-                                    Entrar
-                                </button>
+                                <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">Entrar</button>
                             </form>
                         </div>
                     </div>
@@ -440,9 +340,7 @@
                                     <img src="https://uuaqmwnfjopgjmjjchmw.supabase.co/storage/v1/object/public/logos/Logo%20Oby%20-%20Baixa%20Qualidade.png" alt="OBY Energy" className="h-10" />
                                     <h1 className="text-xl font-bold text-gray-800">Detalhes da Proposta</h1>
                                 </div>
-                                <button onClick={() => setSelectedProposta(null)} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                                    ← Voltar
-                                </button>
+                                <button onClick={() => setSelectedProposta(null)} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">← Voltar</button>
                             </div>
                         </nav>
 
@@ -474,28 +372,37 @@
                                 </div>
 
                                 <div className="flex gap-3">
-                                    <button 
-                                        onClick={() => gerarContratoPDF(selectedProposta)}
-                                        className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
-                                    >
+                                    <button onClick={() => gerarContratoPDF(selectedProposta)} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition">
                                         📄 Gerar Contrato PDF
                                     </button>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="bg-blue-50 p-4 rounded-lg">
-                                        <h3 className="font-bold text-lg mb-3 text-blue-800">📍 Dados de Contato</h3>
+                                        <h3 className="font-bold text-lg mb-3 text-blue-800">📞 Dados de Contato</h3>
                                         <div className="space-y-2 text-sm">
                                             <p><strong>Email:</strong> {selectedProposta.email}</p>
                                             <p><strong>Telefone:</strong> {selectedProposta.telefone}</p>
                                             <p><strong>CEP:</strong> {selectedProposta.cep}</p>
-                                            <p><strong>Cidade:</strong> {selectedProposta.cidade} - {selectedProposta.estado}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-indigo-50 p-4 rounded-lg">
+                                        <h3 className="font-bold text-lg mb-3 text-indigo-800">🏠 Endereço Completo</h3>
+                                        <div className="space-y-2 text-sm">
+                                            <p><strong>Logradouro:</strong> {selectedProposta.logradouro || 'N/A'}</p>
+                                            <p><strong>Número:</strong> {selectedProposta.numero_endereco || 'N/A'}</p>
+                                            <p><strong>Complemento:</strong> {selectedProposta.complemento || 'N/A'}</p>
+                                            <p><strong>Bairro:</strong> {selectedProposta.bairro || 'N/A'}</p>
+                                            <p><strong>Cidade/UF:</strong> {selectedProposta.cidade} - {selectedProposta.estado}</p>
                                         </div>
                                     </div>
 
                                     <div className="bg-green-50 p-4 rounded-lg">
-                                        <h3 className="font-bold text-lg mb-3 text-green-800">⚡ Dados da Instalação</h3>
+                                        <h3 className="font-bold text-lg mb-3 text-green-800">⚡ Qualificação da Instalação</h3>
                                         <div className="space-y-2 text-sm">
+                                            <p><strong>Modalidade Tarifária:</strong> {selectedProposta.modalidade_tarifaria || 'N/A'}</p>
+                                            <p><strong>Distribuidora:</strong> {selectedProposta.distribuidora_energia || 'N/A'}</p>
                                             <p><strong>Tipo de Conexão:</strong> {selectedProposta.tipo_conexao}</p>
                                             <p><strong>Consumo Mensal:</strong> {selectedProposta.consumo_kw} kW</p>
                                             <p><strong>Nº Instalação:</strong> {selectedProposta.numero_instalacao}</p>
@@ -534,65 +441,76 @@
                                             )}
                                         </div>
                                     </div>
+
+                                    {selectedProposta.tem_responsavel_pagamento && (
+                                        <div className="bg-yellow-50 p-4 rounded-lg border-2 border-yellow-400">
+                                            <h3 className="font-bold text-lg mb-3 text-yellow-800">💳 Responsável pelo Pagamento</h3>
+                                            <div className="space-y-2 text-sm">
+                                                <p><strong>Nome:</strong> {selectedProposta.nome_responsavel_pagamento || 'N/A'}</p>
+                                                <p><strong>CPF:</strong> {selectedProposta.cpf_responsavel_pagamento || 'N/A'}</p>
+                                                <p><strong>RG:</strong> {selectedProposta.rg_responsavel_pagamento || 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="bg-teal-50 p-4 rounded-lg">
+                                        <h3 className="font-bold text-lg mb-3 text-teal-800">✅ Termos e Aceites</h3>
+                                        <div className="space-y-2 text-sm">
+                                            <p><strong>Termo de Adesão:</strong> {selectedProposta.aceite_termo_adesao ? '✅ Aceito' : '❌ Não aceito'}</p>
+                                            <p><strong>Dados Pessoais (LGPD):</strong> {selectedProposta.aceite_dados_pessoais ? '✅ Aceito' : '❌ Não aceito'}</p>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="bg-gray-50 p-6 rounded-lg">
-                                    <h3 className="font-bold text-lg mb-4 text-gray-800">📎 Arquivos Enviados</h3>
+                                    <h3 className="font-bold text-lg mb-4 text-gray-800">🔎 Arquivos Enviados</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                         {selectedProposta.url_conta_energia && (
-                                            <a href={selectedProposta.url_conta_energia} target="_blank" rel="noopener noreferrer" 
-                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                            <a href={selectedProposta.url_conta_energia} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
                                                 <span className="text-2xl">📄</span>
                                                 <span className="text-sm font-medium">Conta de Energia</span>
                                             </a>
                                         )}
                                         {selectedProposta.url_rg_frente && (
-                                            <a href={selectedProposta.url_rg_frente} target="_blank" rel="noopener noreferrer"
-                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                            <a href={selectedProposta.url_rg_frente} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
                                                 <span className="text-2xl">🆔</span>
                                                 <span className="text-sm font-medium">RG/CNH Frente</span>
                                             </a>
                                         )}
                                         {selectedProposta.url_rg_verso && (
-                                            <a href={selectedProposta.url_rg_verso} target="_blank" rel="noopener noreferrer"
-                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                            <a href={selectedProposta.url_rg_verso} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
                                                 <span className="text-2xl">🆔</span>
                                                 <span className="text-sm font-medium">RG/CNH Verso</span>
                                             </a>
                                         )}
                                         {selectedProposta.url_contrato_social && (
-                                            <a href={selectedProposta.url_contrato_social} target="_blank" rel="noopener noreferrer"
-                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                            <a href={selectedProposta.url_contrato_social} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
                                                 <span className="text-2xl">📋</span>
                                                 <span className="text-sm font-medium">Contrato Social</span>
                                             </a>
                                         )}
                                         {selectedProposta.url_rg_rep_1_frente && (
-                                            <a href={selectedProposta.url_rg_rep_1_frente} target="_blank" rel="noopener noreferrer"
-                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                            <a href={selectedProposta.url_rg_rep_1_frente} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
                                                 <span className="text-2xl">👤</span>
                                                 <span className="text-sm font-medium">RG Rep. 1 Frente</span>
                                             </a>
                                         )}
                                         {selectedProposta.url_rg_rep_1_verso && (
-                                            <a href={selectedProposta.url_rg_rep_1_verso} target="_blank" rel="noopener noreferrer"
-                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
+                                            <a href={selectedProposta.url_rg_rep_1_verso} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
                                                 <span className="text-2xl">👤</span>
                                                 <span className="text-sm font-medium">RG Rep. 1 Verso</span>
                                             </a>
                                         )}
-                                        {selectedProposta.url_rg_rep_2_frente && (
-                                            <a href={selectedProposta.url_rg_rep_2_frente} target="_blank" rel="noopener noreferrer"
-                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
-                                                <span className="text-2xl">👤</span>
-                                                <span className="text-sm font-medium">RG Rep. 2 Frente</span>
+                                        {selectedProposta.url_rg_resp_pag_frente && (
+                                            <a href={selectedProposta.url_rg_resp_pag_frente} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-yellow-50 transition">
+                                                <span className="text-2xl">💳</span>
+                                                <span className="text-sm font-medium">RG Resp. Pag. Frente</span>
                                             </a>
                                         )}
-                                        {selectedProposta.url_rg_rep_2_verso && (
-                                            <a href={selectedProposta.url_rg_rep_2_verso} target="_blank" rel="noopener noreferrer"
-                                               className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
-                                                <span className="text-2xl">👤</span>
-                                                <span className="text-sm font-medium">RG Rep. 2 Verso</span>
+                                        {selectedProposta.url_rg_resp_pag_verso && (
+                                            <a href={selectedProposta.url_rg_resp_pag_verso} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-yellow-50 transition">
+                                                <span className="text-2xl">💳</span>
+                                                <span className="text-sm font-medium">RG Resp. Pag. Verso</span>
                                             </a>
                                         )}
                                     </div>
@@ -611,32 +529,16 @@
                                 <img src="https://uuaqmwnfjopgjmjjchmw.supabase.co/storage/v1/object/public/logos/Logo%20Oby%20-%20Baixa%20Qualidade.png" alt="OBY Energy" className="h-10" />
                                 <h1 className="text-xl font-bold text-gray-800">Painel Administrativo</h1>
                             </div>
-                            <button onClick={handleLogout} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                                Sair
-                            </button>
+                            <button onClick={handleLogout} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Sair</button>
                         </div>
                     </nav>
 
                     <div className="max-w-7xl mx-auto p-6">
                         <div className="mb-6 flex gap-4 border-b">
-                            <button
-                                onClick={() => setActiveTab('propostas')}
-                                className={`px-6 py-3 font-semibold transition ${
-                                    activeTab === 'propostas'
-                                        ? 'border-b-2 border-blue-600 text-blue-600'
-                                        : 'text-gray-600 hover:text-blue-600'
-                                }`}
-                            >
+                            <button onClick={() => setActiveTab('propostas')} className={`px-6 py-3 font-semibold transition ${activeTab === 'propostas' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
                                 📋 Propostas
                             </button>
-                            <button
-                                onClick={() => setActiveTab('configuracoes')}
-                                className={`px-6 py-3 font-semibold transition ${
-                                    activeTab === 'configuracoes'
-                                        ? 'border-b-2 border-blue-600 text-blue-600'
-                                        : 'text-gray-600 hover:text-blue-600'
-                                }`}
-                            >
+                            <button onClick={() => setActiveTab('configuracoes')} className={`px-6 py-3 font-semibold transition ${activeTab === 'configuracoes' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
                                 ⚙️ Configurações
                             </button>
                         </div>
@@ -650,51 +552,27 @@
                                         <h3 className="font-bold text-lg mb-4 text-blue-800">💰 Tarifa de Energia</h3>
                                         <div className="space-y-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Valor da Tarifa (R$/kWh)
-                                                </label>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Valor da Tarifa (R$/kWh)</label>
                                                 <div className="flex gap-2">
-                                                    <span className="flex items-center px-3 bg-gray-100 border border-gray-300 rounded-l-lg text-gray-600">
-                                                        R$
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={tarifaKwh}
-                                                        onChange={(e) => setTarifaKwh(e.target.value)}
-                                                        className="flex-1 p-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="0.85"
-                                                    />
+                                                    <span className="flex items-center px-3 bg-gray-100 border border-gray-300 rounded-l-lg text-gray-600">R$</span>
+                                                    <input type="number" step="0.01" value={tarifaKwh} onChange={(e) => setTarifaKwh(e.target.value)} className="flex-1 p-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500" placeholder="0.85" />
                                                 </div>
-                                                <p className="text-xs text-gray-600 mt-2">
-                                                    ℹ️ Esta tarifa será usada no cálculo de economia do formulário
-                                                </p>
+                                                <p className="text-xs text-gray-600 mt-2">ℹ️ Esta tarifa será usada no cálculo de economia do formulário</p>
                                             </div>
                                             
                                             <div className="bg-white p-4 rounded border border-gray-200">
-                                                <p className="text-sm text-gray-700">
-                                                    <strong>Valor atual:</strong> R$ {tarifaKwh} por kWh
-                                                </p>
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Equivalente a R$ {(parseFloat(tarifaKwh) * 100).toFixed(2)} centavos/kWh
-                                                </p>
+                                                <p className="text-sm text-gray-700"><strong>Valor atual:</strong> R$ {tarifaKwh} por kWh</p>
+                                                <p className="text-xs text-gray-500 mt-1">Equivalente a R$ {(parseFloat(tarifaKwh) * 100).toFixed(2)} centavos/kWh</p>
                                             </div>
 
-                                            <button
-                                                onClick={salvarTarifa}
-                                                disabled={savingTarifa}
-                                                className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                            >
+                                            <button onClick={salvarTarifa} disabled={savingTarifa} className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
                                                 {savingTarifa ? '💾 Salvando...' : '💾 Salvar Tarifa'}
                                             </button>
                                         </div>
                                     </div>
 
                                     <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                                        <p className="text-sm text-yellow-800">
-                                            <strong>⚠️ Atenção:</strong> As alterações na tarifa afetarão apenas os novos cálculos. 
-                                            Propostas já enviadas manterão o valor calculado no momento do envio.
-                                        </p>
+                                        <p className="text-sm text-yellow-800"><strong>⚠️ Atenção:</strong> As alterações na tarifa afetarão apenas os novos cálculos. Propostas já enviadas manterão o valor calculado no momento do envio.</p>
                                     </div>
                                 </div>
                             </div>
@@ -707,21 +585,15 @@
                                     </div>
                                     <div className="bg-white p-6 rounded-xl shadow">
                                         <p className="text-gray-600 text-sm">Pendentes</p>
-                                        <p className="text-3xl font-bold text-yellow-600">
-                                            {propostas.filter(p => p.status === 'pendente').length}
-                                        </p>
+                                        <p className="text-3xl font-bold text-yellow-600">{propostas.filter(p => p.status === 'pendente').length}</p>
                                     </div>
                                     <div className="bg-white p-6 rounded-xl shadow">
                                         <p className="text-gray-600 text-sm">Aprovados</p>
-                                        <p className="text-3xl font-bold text-green-600">
-                                            {propostas.filter(p => p.status === 'aprovado').length}
-                                        </p>
+                                        <p className="text-3xl font-bold text-green-600">{propostas.filter(p => p.status === 'aprovado').length}</p>
                                     </div>
                                     <div className="bg-white p-6 rounded-xl shadow">
                                         <p className="text-gray-600 text-sm">Lista Espera</p>
-                                        <p className="text-3xl font-bold text-orange-600">
-                                            {propostas.filter(p => p.status === 'lista_espera').length}
-                                        </p>
+                                        <p className="text-3xl font-bold text-orange-600">{propostas.filter(p => p.status === 'lista_espera').length}</p>
                                     </div>
                                     <div className="bg-white p-6 rounded-xl shadow">
                                         <button onClick={carregarPropostas} disabled={loading} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
@@ -732,18 +604,8 @@
 
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <div className="mb-6 flex flex-col md:flex-row gap-4">
-                                        <input
-                                            type="text"
-                                            placeholder="🔍 Buscar por nome, email, CPF ou CNPJ..."
-                                            value={busca}
-                                            onChange={(e) => setBusca(e.target.value)}
-                                            className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        <select
-                                            value={filtro}
-                                            onChange={(e) => setFiltro(e.target.value)}
-                                            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        >
+                                        <input type="text" placeholder="🔍 Buscar por nome, email, CPF ou CNPJ..." value={busca} onChange={(e) => setBusca(e.target.value)} className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                                        <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                             <option value="todos">Todos os Status</option>
                                             <option value="pendente">Pendente</option>
                                             <option value="aprovado">Aprovado</option>
@@ -779,40 +641,19 @@
                                                                     : proposta.nome_fantasia}
                                                             </td>
                                                             <td className="px-4 py-3 text-sm text-gray-600">{proposta.email}</td>
-                                                            <td className="px-4 py-3 text-sm text-gray-600">
-                                                                {proposta.cidade} - {proposta.estado}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-sm text-gray-600">
-                                                                {formatarData(proposta.created_at)}
-                                                            </td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.cidade} - {proposta.estado}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{formatarData(proposta.created_at)}</td>
                                                             <td className="px-4 py-3">
                                                                 <div className="flex gap-2 items-center">
-                                                                    <button
-                                                                        onClick={() => setSelectedProposta(proposta)}
-                                                                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-                                                                        title="Ver Detalhes"
-                                                                    >
-                                                                        👁️ Ver
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => gerarContratoPDF(proposta)}
-                                                                        className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
-                                                                        title="Gerar Contrato"
-                                                                    >
-                                                                        📄 Contrato
-                                                                    </button>
+                                                                    <button onClick={() => setSelectedProposta(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700" title="Ver Detalhes">👁️ Ver</button>
+                                                                    <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700" title="Gerar Contrato">📄 Contrato</button>
                                                                     <div className="relative">
-                                                                        <button
-                                                                            onClick={() => toggleStatusMenu(proposta.id)}
-                                                                            disabled={proposta.updating}
-                                                                            className={`px-3 py-1 text-white text-xs rounded hover:opacity-80 disabled:opacity-50 ${
-                                                                                proposta.status === 'pendente' ? 'bg-yellow-500' :
-                                                                                proposta.status === 'aprovado' ? 'bg-green-500' :
-                                                                                proposta.status === 'reprovado' ? 'bg-red-500' :
-                                                                                'bg-orange-500'
-                                                                            }`}
-                                                                            title="Alterar Status"
-                                                                        >
+                                                                        <button onClick={() => toggleStatusMenu(proposta.id)} disabled={proposta.updating} className={`px-3 py-1 text-white text-xs rounded hover:opacity-80 disabled:opacity-50 ${
+                                                                            proposta.status === 'pendente' ? 'bg-yellow-500' :
+                                                                            proposta.status === 'aprovado' ? 'bg-green-500' :
+                                                                            proposta.status === 'reprovado' ? 'bg-red-500' :
+                                                                            'bg-orange-500'
+                                                                        }`} title="Alterar Status">
                                                                             {proposta.updating ? '⏳' : (
                                                                                 proposta.status === 'pendente' ? '⏳' :
                                                                                 proposta.status === 'aprovado' ? '✅' :
@@ -821,28 +662,16 @@
                                                                         </button>
                                                                         {proposta.showMenu && (
                                                                             <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                                                                                <button
-                                                                                    onClick={() => atualizarStatus(proposta.id, 'pendente')}
-                                                                                    className="w-full px-3 py-2 text-left text-xs hover:bg-yellow-50 flex items-center gap-2"
-                                                                                >
+                                                                                <button onClick={() => atualizarStatus(proposta.id, 'pendente')} className="w-full px-3 py-2 text-left text-xs hover:bg-yellow-50 flex items-center gap-2">
                                                                                     <span className="text-yellow-600">⏳</span> Pendente
                                                                                 </button>
-                                                                                <button
-                                                                                    onClick={() => atualizarStatus(proposta.id, 'aprovado')}
-                                                                                    className="w-full px-3 py-2 text-left text-xs hover:bg-green-50 flex items-center gap-2"
-                                                                                >
+                                                                                <button onClick={() => atualizarStatus(proposta.id, 'aprovado')} className="w-full px-3 py-2 text-left text-xs hover:bg-green-50 flex items-center gap-2">
                                                                                     <span className="text-green-600">✅</span> Aprovado
                                                                                 </button>
-                                                                                <button
-                                                                                    onClick={() => atualizarStatus(proposta.id, 'reprovado')}
-                                                                                    className="w-full px-3 py-2 text-left text-xs hover:bg-red-50 flex items-center gap-2"
-                                                                                >
+                                                                                <button onClick={() => atualizarStatus(proposta.id, 'reprovado')} className="w-full px-3 py-2 text-left text-xs hover:bg-red-50 flex items-center gap-2">
                                                                                     <span className="text-red-600">❌</span> Reprovado
                                                                                 </button>
-                                                                                <button
-                                                                                    onClick={() => atualizarStatus(proposta.id, 'lista_espera')}
-                                                                                    className="w-full px-3 py-2 text-left text-xs hover:bg-orange-50 flex items-center gap-2"
-                                                                                >
+                                                                                <button onClick={() => atualizarStatus(proposta.id, 'lista_espera')} className="w-full px-3 py-2 text-left text-xs hover:bg-orange-50 flex items-center gap-2">
                                                                                     <span className="text-orange-600">📋</span> Lista de Espera
                                                                                 </button>
                                                                             </div>

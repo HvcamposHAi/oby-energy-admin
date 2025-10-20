@@ -32,9 +32,13 @@
             const [filtro, setFiltro] = useState('todos');
             const [busca, setBusca] = useState('');
             const [activeTab, setActiveTab] = useState('propostas');
-            const [tarifaKwh, setTarifaKwh] = useState('0.85');
+            const [tarifaKwh, setTarifaKwh] = useState('0.842355');
+            const [proporcaoEnergia, setProporcaoEnergia] = useState('0.81');
+            const [proporcaoImpostos, setProporcaoImpostos] = useState('0.19');
             const [tarifaId, setTarifaId] = useState(null);
-            const [savingTarifa, setSavingTarifa] = useState(false);
+            const [proporcaoEnergiaId, setProporcaoEnergiaId] = useState(null);
+            const [proporcaoImpostosId, setProporcaoImpostosId] = useState(null);
+            const [savingConfig, setSavingConfig] = useState(false);
 
             useEffect(() => {
                 const authStatus = localStorage.getItem('oby_admin_auth');
@@ -85,7 +89,7 @@
 
             const carregarConfiguracoes = async () => {
                 try {
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?chave=eq.tarifa_kwh`, {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?select=*`, {
                         headers: {
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
                             'apikey': SUPABASE_KEY
@@ -93,44 +97,83 @@
                     });
                     const data = await response.json();
                     if (data && data.length > 0) {
-                        setTarifaKwh(data[0].valor);
-                        setTarifaId(data[0].id);
+                        data.forEach(config => {
+                            if (config.chave === 'tarifa_kwh') {
+                                setTarifaKwh(config.valor);
+                                setTarifaId(config.id);
+                            }
+                            if (config.chave === 'proporcao_energia') {
+                                setProporcaoEnergia(config.valor);
+                                setProporcaoEnergiaId(config.id);
+                            }
+                            if (config.chave === 'proporcao_impostos') {
+                                setProporcaoImpostos(config.valor);
+                                setProporcaoImpostosId(config.id);
+                            }
+                        });
                     }
                 } catch (error) {
                     console.error('Erro ao carregar configurações:', error);
                 }
             };
 
-            const salvarTarifa = async () => {
-                if (!tarifaId) {
-                    alert('Erro: ID da configuração não encontrado');
-                    return;
-                }
-                setSavingTarifa(true);
+            const salvarConfiguracoes = async () => {
+                setSavingConfig(true);
                 try {
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${tarifaId}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'apikey': SUPABASE_KEY,
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
-                        },
-                        body: JSON.stringify({
-                            valor: tarifaKwh,
-                            updated_at: new Date().toISOString()
-                        })
-                    });
-                    if (response.ok) {
-                        alert('✅ Tarifa atualizada com sucesso!');
-                    } else {
-                        throw new Error('Erro ao salvar');
+                    if (tarifaId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${tarifaId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            },
+                            body: JSON.stringify({
+                                valor: tarifaKwh,
+                                updated_at: new Date().toISOString()
+                            })
+                        });
                     }
+
+                    if (proporcaoEnergiaId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${proporcaoEnergiaId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            },
+                            body: JSON.stringify({
+                                valor: proporcaoEnergia,
+                                updated_at: new Date().toISOString()
+                            })
+                        });
+                    }
+
+                    if (proporcaoImpostosId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${proporcaoImpostosId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            },
+                            body: JSON.stringify({
+                                valor: proporcaoImpostos,
+                                updated_at: new Date().toISOString()
+                            })
+                        });
+                    }
+
+                    alert('✅ Configurações atualizadas com sucesso!');
                 } catch (error) {
-                    console.error('Erro ao salvar tarifa:', error);
-                    alert('Erro ao salvar tarifa. Tente novamente.');
+                    console.error('Erro ao salvar configurações:', error);
+                    alert('Erro ao salvar configurações. Tente novamente.');
                 } finally {
-                    setSavingTarifa(false);
+                    setSavingConfig(false);
                 }
             };
 
@@ -225,7 +268,7 @@
                 y += linhasCliente.length * 5 + 8;
                 
                 doc.setFont('helvetica', 'bold');
-                doc.text('ClÃ¡usula Primeira - Direitos Econômicos e Prazo de Vigência', 20, y);
+                doc.text('Cláusula Primeira - Direitos Econômicos e Prazo de Vigência', 20, y);
                 doc.setFont('helvetica', 'normal');
                 y += 7;
                 
@@ -411,12 +454,46 @@
                                     </div>
 
                                     <div className="bg-purple-50 p-4 rounded-lg">
-                                        <h3 className="font-bold text-lg mb-3 text-purple-800">💰 Economia</h3>
+                                        <h3 className="font-bold text-lg mb-3 text-purple-800">💰 Detalhamento da Economia</h3>
                                         <div className="space-y-2 text-sm">
-                                            <p><strong>Economia Mensal:</strong> R$ {selectedProposta.economia_mensal}</p>
-                                            <p><strong>Economia Anual:</strong> R$ {selectedProposta.economia_anual}</p>
-                                            <p><strong>Desconto:</strong> {selectedProposta.desconto}%</p>
-                                            {selectedProposta.cupom && <p><strong>Cupom:</strong> {selectedProposta.cupom}</p>}
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <p className="text-gray-600">Consumo Mínimo</p>
+                                                    <p className="font-bold">R$ {selectedProposta.consumo_minimo_valor || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-600">Impostos Não Comp.</p>
+                                                    <p className="font-bold">R$ {selectedProposta.impostos_nao_compensaveis || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-600">Energia Cativa Atual</p>
+                                                    <p className="font-bold">R$ {selectedProposta.energia_cativa_atual || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-600">Energia c/ Desconto</p>
+                                                    <p className="font-bold text-green-600">R$ {selectedProposta.energia_cativa_com_desconto || 'N/A'}</p>
+                                                </div>
+                                            </div>
+                                            <hr className="my-3 border-purple-200"/>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <p className="text-gray-600">Conta Atual</p>
+                                                    <p className="font-bold text-lg">R$ {selectedProposta.conta_atual || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-600">Conta Nova</p>
+                                                    <p className="font-bold text-lg text-green-600">R$ {selectedProposta.conta_nova || 'N/A'}</p>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white p-3 rounded border border-purple-200 mt-2">
+                                                <p className="text-gray-600 text-xs">Equivale a pagar</p>
+                                                <p className="font-bold text-xl text-purple-700">{selectedProposta.contas_por_ano || 'N/A'} contas/ano</p>
+                                            </div>
+                                            <div className="bg-white p-3 rounded border border-purple-200 mt-2">
+                                                <p className="text-gray-600 text-xs">Economia</p>
+                                                <p className="font-bold text-lg text-green-600">R$ {selectedProposta.economia_mensal}/mês • R$ {selectedProposta.economia_anual}/ano</p>
+                                                <p className="text-gray-600 text-xs mt-1">Desconto: {selectedProposta.desconto}%</p>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -549,30 +626,47 @@
                                 
                                 <div className="space-y-6">
                                     <div className="bg-blue-50 p-6 rounded-lg">
-                                        <h3 className="font-bold text-lg mb-4 text-blue-800">💰 Tarifa de Energia</h3>
+                                        <h3 className="font-bold text-lg mb-4 text-blue-800">💰 Configurações de Tarifa</h3>
                                         <div className="space-y-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">Valor da Tarifa (R$/kWh)</label>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Tarifa Total (R$/kWh)</label>
                                                 <div className="flex gap-2">
                                                     <span className="flex items-center px-3 bg-gray-100 border border-gray-300 rounded-l-lg text-gray-600">R$</span>
-                                                    <input type="number" step="0.01" value={tarifaKwh} onChange={(e) => setTarifaKwh(e.target.value)} className="flex-1 p-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500" placeholder="0.85" />
+                                                    <input type="number" step="0.000001" value={tarifaKwh} onChange={(e) => setTarifaKwh(e.target.value)} className="flex-1 p-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500" placeholder="0.842355" />
                                                 </div>
-                                                <p className="text-xs text-gray-600 mt-2">ℹ️ Esta tarifa será usada no cálculo de economia do formulário</p>
+                                                <p className="text-xs text-gray-600 mt-2">ℹ️ Tarifa completa da distribuidora (incluindo energia + impostos)</p>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">Proporção Energia</label>
+                                                    <input type="number" step="0.01" value={proporcaoEnergia} onChange={(e) => setProporcaoEnergia(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="0.81" />
+                                                    <p className="text-xs text-gray-600 mt-1">81% da tarifa total</p>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">Proporção Impostos</label>
+                                                    <input type="number" step="0.01" value={proporcaoImpostos} onChange={(e) => setProporcaoImpostos(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="0.19" />
+                                                    <p className="text-xs text-gray-600 mt-1">19% da tarifa total</p>
+                                                </div>
                                             </div>
                                             
                                             <div className="bg-white p-4 rounded border border-gray-200">
-                                                <p className="text-sm text-gray-700"><strong>Valor atual:</strong> R$ {tarifaKwh} por kWh</p>
-                                                <p className="text-xs text-gray-500 mt-1">Equivalente a R$ {(parseFloat(tarifaKwh) * 100).toFixed(2)} centavos/kWh</p>
+                                                <p className="text-sm text-gray-700 mb-2"><strong>Resumo:</strong></p>
+                                                <div className="space-y-1 text-sm">
+                                                    <p>• Tarifa Total: R$ {tarifaKwh}/kWh</p>
+                                                    <p>• Tarifa Energia: R$ {(parseFloat(tarifaKwh) * parseFloat(proporcaoEnergia)).toFixed(6)}/kWh ({(parseFloat(proporcaoEnergia) * 100).toFixed(0)}%)</p>
+                                                    <p>• Tarifa Impostos: R$ {(parseFloat(tarifaKwh) * parseFloat(proporcaoImpostos)).toFixed(6)}/kWh ({(parseFloat(proporcaoImpostos) * 100).toFixed(0)}%)</p>
+                                                </div>
                                             </div>
 
-                                            <button onClick={salvarTarifa} disabled={savingTarifa} className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                                                {savingTarifa ? '💾 Salvando...' : '💾 Salvar Tarifa'}
+                                            <button onClick={salvarConfiguracoes} disabled={savingConfig} className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                                {savingConfig ? '💾 Salvando...' : '💾 Salvar Configurações'}
                                             </button>
                                         </div>
                                     </div>
 
                                     <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                                        <p className="text-sm text-yellow-800"><strong>⚠️ Atenção:</strong> As alterações na tarifa afetarão apenas os novos cálculos. Propostas já enviadas manterão o valor calculado no momento do envio.</p>
+                                        <p className="text-sm text-yellow-800"><strong>⚠️ Atenção:</strong> As alterações nas configurações afetarão apenas os novos cálculos. Propostas já enviadas manterão os valores calculados no momento do envio.</p>
                                     </div>
                                 </div>
                             </div>

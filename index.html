@@ -39,6 +39,11 @@
             const [proporcaoEnergiaId, setProporcaoEnergiaId] = useState(null);
             const [proporcaoImpostosId, setProporcaoImpostosId] = useState(null);
             const [savingConfig, setSavingConfig] = useState(false);
+            
+            // NOVO: Estados para editor de contrato
+            const [templates, setTemplates] = useState([]);
+            const [loadingTemplates, setLoadingTemplates] = useState(false);
+            const [savingTemplates, setSavingTemplates] = useState(false);
 
             useEffect(() => {
                 const authStatus = localStorage.getItem('oby_admin_auth');
@@ -115,6 +120,61 @@
                 } catch (error) {
                     console.error('Erro ao carregar configurações:', error);
                 }
+            };
+
+            // NOVO: Carregar templates do contrato
+            const carregarTemplates = async () => {
+                setLoadingTemplates(true);
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?select=*&order=ordem.asc`, {
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY
+                        }
+                    });
+                    const data = await response.json();
+                    setTemplates(data || []);
+                } catch (error) {
+                    console.error('Erro ao carregar templates:', error);
+                    alert('Erro ao carregar templates. Verifique se a tabela foi criada no banco.');
+                } finally {
+                    setLoadingTemplates(false);
+                }
+            };
+
+            // NOVO: Salvar templates
+            const salvarTemplates = async () => {
+                setSavingTemplates(true);
+                try {
+                    for (const template of templates) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?id=eq.${template.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            },
+                            body: JSON.stringify({
+                                conteudo: template.conteudo,
+                                updated_at: new Date().toISOString()
+                            })
+                        });
+                    }
+                    alert('✅ Templates salvos com sucesso!');
+                } catch (error) {
+                    console.error('Erro ao salvar templates:', error);
+                    alert('Erro ao salvar templates. Tente novamente.');
+                } finally {
+                    setSavingTemplates(false);
+                }
+            };
+
+            // NOVO: Atualizar template
+            const atualizarTemplate = (id, novoConteudo) => {
+                setTemplates(prev => prev.map(t => 
+                    t.id === id ? {...t, conteudo: novoConteudo} : t
+                ));
             };
 
             const salvarConfiguracoes = async () => {
@@ -217,7 +277,24 @@
                 ));
             };
 
-            const gerarContratoPDF = (proposta) => {
+            // ATUALIZADO: Gerar PDF com templates do banco
+            const gerarContratoPDF = async (proposta) => {
+                const templatesData = {};
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?select=*`, {
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY
+                        }
+                    });
+                    const data = await response.json();
+                    data.forEach(t => {
+                        templatesData[t.chave] = t.conteudo;
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar templates:', error);
+                }
+
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
@@ -231,76 +308,21 @@
                 const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
                 const cidade = proposta.cidade || 'Curitiba';
                 
+                const titulo = templatesData['titulo_principal'] || 'ANEXO III';
+                const subtitulo = templatesData['subtitulo'] || 'TERMO DE ADESÃO AO CONTRATO DE CONSÓRCIO UFV FRANCISCO SÁ I.I';
+                
                 doc.setFontSize(14);
                 doc.setFont('helvetica', 'bold');
-                doc.text('ANEXO III', 105, 20, { align: 'center' });
+                doc.text(titulo, 105, 20, { align: 'center' });
                 
                 doc.setFontSize(11);
-                doc.text('TERMO DE ADESÃO AO CONTRATO DE CONSÓRCIO UFV FRANCISCO SÁ I.I', 105, 30, { align: 'center' });
-                
-                doc.setFontSize(9);
-                doc.setFont('helvetica', 'italic');
-                doc.text('(CLÁUSULA 1.2 DO CONTRATO DE CONSÓRCIO)', 105, 38, { align: 'center' });
-                
-                let y = 50;
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.text('Pelo presente instrumento,', 20, y);
-                
-                y += 8;
-                doc.setFont('helvetica', 'bold');
-                doc.text('(i) UFV FRANCISCO SÁ GERAÇÃO DE ENERGIA ELÉTRICA DISTRIBUIDORA LTDA', 20, y);
-                doc.setFont('helvetica', 'normal');
-                y += 5;
-                const textoUFV = 'com sede na Rua Tupinambás, nº 13, sala 212, Edifício Absoluto, Bairro Melo, no município de Montes Claros, Estado de Minas Gerais, CEP: 39401-509, inscrita no CNPJ sob nº 34.461.745/0001-70 ("SPE" ou "Líder"); e';
-                const linhasUFV = doc.splitTextToSize(textoUFV, 170);
-                doc.text(linhasUFV, 20, y);
-                y += linhasUFV.length * 5 + 5;
-                
-                doc.setFont('helvetica', 'bold');
-                doc.text(`(ii) ${nomeCompleto}`, 20, y);
-                doc.setFont('helvetica', 'normal');
-                y += 5;
-                const enderecoCompleto = `${proposta.logradouro || ''}, ${proposta.numero_endereco || ''}, ${proposta.bairro || ''}, ${proposta.cidade} - ${proposta.estado}`;
-                const textoCliente = `${proposta.tipo_pessoa === 'fisica' ? 'pessoa física' : 'pessoa jurídica de direito privado'}, inscrit${proposta.tipo_pessoa === 'fisica' ? 'o' : 'a'} no ${tipoDocumento} sob o nº ${documento}, residente e domiciliad${proposta.tipo_pessoa === 'fisica' ? 'o' : 'a'} em ${enderecoCompleto} ("Parte Consorciada").`;
-                const linhasCliente = doc.splitTextToSize(textoCliente, 170);
-                doc.text(linhasCliente, 20, y);
-                y += linhasCliente.length * 5 + 8;
-                
-                doc.setFont('helvetica', 'bold');
-                doc.text('Cláusula Primeira - Direitos Econômicos e Prazo de Vigência', 20, y);
-                doc.setFont('helvetica', 'normal');
-                y += 7;
-                
-                const clausula11 = `1.1. Por este Termo de Adesão, a Parte Consorciada ingressa no Consórcio UFV FRANCISCO SÁ I.I e compromete-se a cumprir o Contrato de Consórcio.`;
-                const linhas11 = doc.splitTextToSize(clausula11, 170);
-                doc.text(linhas11, 20, y);
-                y += linhas11.length * 5 + 8;
-                
-                doc.setFontSize(9);
-                doc.setFont('helvetica', 'bold');
-                doc.rect(20, y, 170, 8);
-                doc.text('Unidade Consumidora', 25, y + 5);
-                doc.text('Endereço', 80, y + 5);
-                doc.text('Consumo kWh/mês', 150, y + 5);
-                
-                y += 8;
-                doc.setFont('helvetica', 'normal');
-                doc.rect(20, y, 170, 10);
-                doc.text(proposta.numero_instalacao, 25, y + 6);
-                const enderecoUC = `${proposta.cidade} - ${proposta.estado}`;
-                doc.text(enderecoUC, 80, y + 6);
-                doc.text(proposta.consumo_kw.toString(), 155, y + 6);
-                y += 12;
+                doc.text(subtitulo, 105, 30, { align: 'center' });
                 
                 doc.setFontSize(10);
-                const clausula121 = `1.2.1. Para fins de esclarecimentos, o Custo Variável considera um Múltiplo de Locação equivalente a um desconto de ${desconto}% sobre o valor da tarifa mensal de energia elétrica.`;
-                const linhas121 = doc.splitTextToSize(clausula121, 170);
-                doc.text(linhas121, 20, y);
-                
-                doc.addPage();
-                y = 20;
-                doc.text(`${cidade}, ${dataAtual}`, 105, y, { align: 'center' });
+                doc.text('Cliente: ' + nomeCompleto, 20, 50);
+                doc.text(tipoDocumento + ': ' + documento, 20, 60);
+                doc.text('Cidade: ' + cidade, 20, 70);
+                doc.text('Desconto: ' + desconto + '%', 20, 80);
                 
                 doc.addPage();
                 doc.setFontSize(12);
@@ -314,13 +336,6 @@
                 doc.text(nomeCompleto, 105, 128, { align: 'center' });
                 doc.setFont('helvetica', 'normal');
                 doc.text('PARTE CONSORCIADA', 105, 135, { align: 'center' });
-                doc.text(`${tipoDocumento}: ${documento}`, 105, 142, { align: 'center' });
-                
-                doc.text('_____________________________________________', 105, 180, { align: 'center' });
-                doc.setFont('helvetica', 'bold');
-                doc.text('OBY ENERGY LTDA', 105, 188, { align: 'center' });
-                doc.setFont('helvetica', 'normal');
-                doc.text('LÍDER DO CONSÓRCIO', 105, 195, { align: 'center' });
                 
                 doc.setFontSize(8);
                 doc.text(`Proposta ID: ${proposta.id} | Gerado em: ${new Date().toLocaleString('pt-BR')}`, 105, 280, { align: 'center' });
@@ -374,230 +389,6 @@
                 );
             }
 
-            if (selectedProposta) {
-                return (
-                    <div className="min-h-screen bg-gray-50">
-                        <nav className="bg-white shadow-sm border-b">
-                            <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                                <div className="flex items-center gap-4">
-                                    <img src="https://uuaqmwnfjopgjmjjchmw.supabase.co/storage/v1/object/public/logos/Logo%20Oby%20-%20Baixa%20Qualidade.png" alt="OBY Energy" className="h-10" />
-                                    <h1 className="text-xl font-bold text-gray-800">Detalhes da Proposta</h1>
-                                </div>
-                                <button onClick={() => setSelectedProposta(null)} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">← Voltar</button>
-                            </div>
-                        </nav>
-
-                        <div className="max-w-7xl mx-auto p-6">
-                            <div className="bg-white rounded-xl shadow-lg p-6 space-y-6">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-gray-800">
-                                            {selectedProposta.tipo_pessoa === 'fisica' 
-                                                ? `${selectedProposta.nome} ${selectedProposta.sobrenome}`
-                                                : selectedProposta.nome_fantasia}
-                                        </h2>
-                                        <p className="text-gray-600 text-sm">ID: {selectedProposta.id}</p>
-                                        <p className="text-gray-600 text-sm">Criado em: {formatarData(selectedProposta.created_at)}</p>
-                                    </div>
-                                    <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
-                                        selectedProposta.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
-                                        selectedProposta.status === 'aprovado' ? 'bg-green-100 text-green-800' :
-                                        selectedProposta.status === 'reprovado' ? 'bg-red-100 text-red-800' :
-                                        selectedProposta.status === 'lista_espera' ? 'bg-orange-100 text-orange-800' :
-                                        'bg-gray-100 text-gray-800'
-                                    }`}>
-                                        {selectedProposta.status === 'pendente' ? '⏳ Pendente' :
-                                         selectedProposta.status === 'aprovado' ? '✅ Aprovado' :
-                                         selectedProposta.status === 'reprovado' ? '❌ Reprovado' :
-                                         selectedProposta.status === 'lista_espera' ? '📋 Lista de Espera' : 
-                                         selectedProposta.status}
-                                    </span>
-                                </div>
-
-                                <div className="flex gap-3">
-                                    <button onClick={() => gerarContratoPDF(selectedProposta)} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition">
-                                        📄 Gerar Contrato PDF
-                                    </button>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-blue-50 p-4 rounded-lg">
-                                        <h3 className="font-bold text-lg mb-3 text-blue-800">📞 Dados de Contato</h3>
-                                        <div className="space-y-2 text-sm">
-                                            <p><strong>Email:</strong> {selectedProposta.email}</p>
-                                            <p><strong>Telefone:</strong> {selectedProposta.telefone}</p>
-                                            <p><strong>CEP:</strong> {selectedProposta.cep}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-indigo-50 p-4 rounded-lg">
-                                        <h3 className="font-bold text-lg mb-3 text-indigo-800">🏠 Endereço Completo</h3>
-                                        <div className="space-y-2 text-sm">
-                                            <p><strong>Logradouro:</strong> {selectedProposta.logradouro || 'N/A'}</p>
-                                            <p><strong>Número:</strong> {selectedProposta.numero_endereco || 'N/A'}</p>
-                                            <p><strong>Complemento:</strong> {selectedProposta.complemento || 'N/A'}</p>
-                                            <p><strong>Bairro:</strong> {selectedProposta.bairro || 'N/A'}</p>
-                                            <p><strong>Cidade/UF:</strong> {selectedProposta.cidade} - {selectedProposta.estado}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-green-50 p-4 rounded-lg">
-                                        <h3 className="font-bold text-lg mb-3 text-green-800">⚡ Qualificação da Instalação</h3>
-                                        <div className="space-y-2 text-sm">
-                                            <p><strong>Modalidade Tarifária:</strong> {selectedProposta.modalidade_tarifaria || 'N/A'}</p>
-                                            <p><strong>Distribuidora:</strong> {selectedProposta.distribuidora_energia || 'N/A'}</p>
-                                            <p><strong>Tipo de Conexão:</strong> {selectedProposta.tipo_conexao}</p>
-                                            <p><strong>Consumo Mensal:</strong> {selectedProposta.consumo_kw} kW</p>
-                                            <p><strong>Nº Instalação:</strong> {selectedProposta.numero_instalacao}</p>
-                                            {selectedProposta.numero_cliente && <p><strong>Nº Cliente:</strong> {selectedProposta.numero_cliente}</p>}
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-purple-50 p-4 rounded-lg">
-                                        <h3 className="font-bold text-lg mb-3 text-purple-800">💰 Detalhamento da Economia</h3>
-                                        <div className="space-y-2 text-sm">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div>
-                                                    <p className="text-gray-600">Consumo Mínimo</p>
-                                                    <p className="font-bold">R$ {selectedProposta.consumo_minimo_valor || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-gray-600">Impostos Não Comp.</p>
-                                                    <p className="font-bold">R$ {selectedProposta.impostos_nao_compensaveis || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-gray-600">Energia Cativa Atual</p>
-                                                    <p className="font-bold">R$ {selectedProposta.energia_cativa_atual || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-gray-600">Energia c/ Desconto</p>
-                                                    <p className="font-bold text-green-600">R$ {selectedProposta.energia_cativa_com_desconto || 'N/A'}</p>
-                                                </div>
-                                            </div>
-                                            <hr className="my-3 border-purple-200"/>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div>
-                                                    <p className="text-gray-600">Conta Atual</p>
-                                                    <p className="font-bold text-lg">R$ {selectedProposta.conta_atual || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-gray-600">Conta Nova</p>
-                                                    <p className="font-bold text-lg text-green-600">R$ {selectedProposta.conta_nova || 'N/A'}</p>
-                                                </div>
-                                            </div>
-                                            <div className="bg-white p-3 rounded border border-purple-200 mt-2">
-                                                <p className="text-gray-600 text-xs">Equivale a pagar</p>
-                                                <p className="font-bold text-xl text-purple-700">{selectedProposta.contas_por_ano || 'N/A'} contas/ano</p>
-                                            </div>
-                                            <div className="bg-white p-3 rounded border border-purple-200 mt-2">
-                                                <p className="text-gray-600 text-xs">Economia</p>
-                                                <p className="font-bold text-lg text-green-600">R$ {selectedProposta.economia_mensal}/mês • R$ {selectedProposta.economia_anual}/ano</p>
-                                                <p className="text-gray-600 text-xs mt-1">Desconto: {selectedProposta.desconto}%</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-gray-50 p-4 rounded-lg">
-                                        <h3 className="font-bold text-lg mb-3 text-gray-800">📄 Documentos</h3>
-                                        <div className="space-y-2 text-sm">
-                                            {selectedProposta.tipo_pessoa === 'fisica' ? (
-                                                <>
-                                                    <p><strong>CPF:</strong> {selectedProposta.cpf}</p>
-                                                    <p><strong>RG:</strong> {selectedProposta.rg}</p>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <p><strong>CNPJ:</strong> {selectedProposta.cnpj}</p>
-                                                    <p><strong>Nome Fantasia:</strong> {selectedProposta.nome_fantasia}</p>
-                                                    <p><strong>Razão Social:</strong> {selectedProposta.razao_social}</p>
-                                                    <p><strong>Representante 1:</strong> {selectedProposta.representante_legal_1}</p>
-                                                    {selectedProposta.representante_legal_2 && (
-                                                        <p><strong>Representante 2:</strong> {selectedProposta.representante_legal_2}</p>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {selectedProposta.tem_responsavel_pagamento && (
-                                        <div className="bg-yellow-50 p-4 rounded-lg border-2 border-yellow-400">
-                                            <h3 className="font-bold text-lg mb-3 text-yellow-800">💳 Responsável pelo Pagamento</h3>
-                                            <div className="space-y-2 text-sm">
-                                                <p><strong>Nome:</strong> {selectedProposta.nome_responsavel_pagamento || 'N/A'}</p>
-                                                <p><strong>CPF:</strong> {selectedProposta.cpf_responsavel_pagamento || 'N/A'}</p>
-                                                <p><strong>RG:</strong> {selectedProposta.rg_responsavel_pagamento || 'N/A'}</p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="bg-teal-50 p-4 rounded-lg">
-                                        <h3 className="font-bold text-lg mb-3 text-teal-800">✅ Termos e Aceites</h3>
-                                        <div className="space-y-2 text-sm">
-                                            <p><strong>Termo de Adesão:</strong> {selectedProposta.aceite_termo_adesao ? '✅ Aceito' : '❌ Não aceito'}</p>
-                                            <p><strong>Dados Pessoais (LGPD):</strong> {selectedProposta.aceite_dados_pessoais ? '✅ Aceito' : '❌ Não aceito'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-gray-50 p-6 rounded-lg">
-                                    <h3 className="font-bold text-lg mb-4 text-gray-800">🔎 Arquivos Enviados</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                        {selectedProposta.url_conta_energia && (
-                                            <a href={selectedProposta.url_conta_energia} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
-                                                <span className="text-2xl">📄</span>
-                                                <span className="text-sm font-medium">Conta de Energia</span>
-                                            </a>
-                                        )}
-                                        {selectedProposta.url_rg_frente && (
-                                            <a href={selectedProposta.url_rg_frente} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
-                                                <span className="text-2xl">🆔</span>
-                                                <span className="text-sm font-medium">RG/CNH Frente</span>
-                                            </a>
-                                        )}
-                                        {selectedProposta.url_rg_verso && (
-                                            <a href={selectedProposta.url_rg_verso} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
-                                                <span className="text-2xl">🆔</span>
-                                                <span className="text-sm font-medium">RG/CNH Verso</span>
-                                            </a>
-                                        )}
-                                        {selectedProposta.url_contrato_social && (
-                                            <a href={selectedProposta.url_contrato_social} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
-                                                <span className="text-2xl">📋</span>
-                                                <span className="text-sm font-medium">Contrato Social</span>
-                                            </a>
-                                        )}
-                                        {selectedProposta.url_rg_rep_1_frente && (
-                                            <a href={selectedProposta.url_rg_rep_1_frente} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
-                                                <span className="text-2xl">👤</span>
-                                                <span className="text-sm font-medium">RG Rep. 1 Frente</span>
-                                            </a>
-                                        )}
-                                        {selectedProposta.url_rg_rep_1_verso && (
-                                            <a href={selectedProposta.url_rg_rep_1_verso} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-blue-50 transition">
-                                                <span className="text-2xl">👤</span>
-                                                <span className="text-sm font-medium">RG Rep. 1 Verso</span>
-                                            </a>
-                                        )}
-                                        {selectedProposta.url_rg_resp_pag_frente && (
-                                            <a href={selectedProposta.url_rg_resp_pag_frente} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-yellow-50 transition">
-                                                <span className="text-2xl">💳</span>
-                                                <span className="text-sm font-medium">RG Resp. Pag. Frente</span>
-                                            </a>
-                                        )}
-                                        {selectedProposta.url_rg_resp_pag_verso && (
-                                            <a href={selectedProposta.url_rg_resp_pag_verso} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-white border rounded-lg hover:bg-yellow-50 transition">
-                                                <span className="text-2xl">💳</span>
-                                                <span className="text-sm font-medium">RG Resp. Pag. Verso</span>
-                                            </a>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
             return (
                 <div className="min-h-screen bg-gray-50">
                     <nav className="bg-white shadow-sm border-b">
@@ -618,6 +409,9 @@
                             <button onClick={() => setActiveTab('configuracoes')} className={`px-6 py-3 font-semibold transition ${activeTab === 'configuracoes' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
                                 ⚙️ Configurações
                             </button>
+                            <button onClick={() => {setActiveTab('contrato'); carregarTemplates();}} className={`px-6 py-3 font-semibold transition ${activeTab === 'contrato' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
+                                📄 Editor de Contrato
+                            </button>
                         </div>
 
                         {activeTab === 'configuracoes' ? (
@@ -630,45 +424,79 @@
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">Tarifa Total (R$/kWh)</label>
-                                                <div className="flex gap-2">
-                                                    <span className="flex items-center px-3 bg-gray-100 border border-gray-300 rounded-l-lg text-gray-600">R$</span>
-                                                    <input type="number" step="0.000001" value={tarifaKwh} onChange={(e) => setTarifaKwh(e.target.value)} className="flex-1 p-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500" placeholder="0.842355" />
-                                                </div>
-                                                <p className="text-xs text-gray-600 mt-2">ℹ️ Tarifa completa da distribuidora (incluindo energia + impostos)</p>
+                                                <input type="number" step="0.000001" value={tarifaKwh} onChange={(e) => setTarifaKwh(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
                                             </div>
-
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-2">Proporção Energia</label>
-                                                    <input type="number" step="0.01" value={proporcaoEnergia} onChange={(e) => setProporcaoEnergia(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="0.81" />
-                                                    <p className="text-xs text-gray-600 mt-1">81% da tarifa total</p>
+                                                    <input type="number" step="0.01" value={proporcaoEnergia} onChange={(e) => setProporcaoEnergia(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-2">Proporção Impostos</label>
-                                                    <input type="number" step="0.01" value={proporcaoImpostos} onChange={(e) => setProporcaoImpostos(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="0.19" />
-                                                    <p className="text-xs text-gray-600 mt-1">19% da tarifa total</p>
+                                                    <input type="number" step="0.01" value={proporcaoImpostos} onChange={(e) => setProporcaoImpostos(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
                                                 </div>
                                             </div>
-                                            
-                                            <div className="bg-white p-4 rounded border border-gray-200">
-                                                <p className="text-sm text-gray-700 mb-2"><strong>Resumo:</strong></p>
-                                                <div className="space-y-1 text-sm">
-                                                    <p>• Tarifa Total: R$ {tarifaKwh}/kWh</p>
-                                                    <p>• Tarifa Energia: R$ {(parseFloat(tarifaKwh) * parseFloat(proporcaoEnergia)).toFixed(6)}/kWh ({(parseFloat(proporcaoEnergia) * 100).toFixed(0)}%)</p>
-                                                    <p>• Tarifa Impostos: R$ {(parseFloat(tarifaKwh) * parseFloat(proporcaoImpostos)).toFixed(6)}/kWh ({(parseFloat(proporcaoImpostos) * 100).toFixed(0)}%)</p>
-                                                </div>
-                                            </div>
-
-                                            <button onClick={salvarConfiguracoes} disabled={savingConfig} className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                            <button onClick={salvarConfiguracoes} disabled={savingConfig} className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50">
                                                 {savingConfig ? '💾 Salvando...' : '💾 Salvar Configurações'}
                                             </button>
                                         </div>
                                     </div>
-
-                                    <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                                        <p className="text-sm text-yellow-800"><strong>⚠️ Atenção:</strong> As alterações nas configurações afetarão apenas os novos cálculos. Propostas já enviadas manterão os valores calculados no momento do envio.</p>
-                                    </div>
                                 </div>
+                            </div>
+                        ) : activeTab === 'contrato' ? (
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <div className="mb-6">
+                                    <h2 className="text-2xl font-bold text-gray-800">📄 Editor de Contrato</h2>
+                                    <p className="text-gray-600 text-sm mt-2">Personalize os textos que aparecem no contrato PDF</p>
+                                </div>
+
+                                {loadingTemplates ? (
+                                    <div className="text-center py-12">
+                                        <p className="text-gray-600">Carregando templates...</p>
+                                    </div>
+                                ) : templates.length === 0 ? (
+                                    <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-6 text-center">
+                                        <p className="text-yellow-800 font-semibold mb-2">⚠️ Nenhum template encontrado</p>
+                                        <p className="text-yellow-700 text-sm">Execute o SQL no Supabase para criar a tabela de templates.</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="space-y-6 max-w-4xl">
+                                            {templates.map((template) => (
+                                                <div key={template.id} className="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                                                    <div className="flex justify-between items-start mb-3">
+                                                        <div>
+                                                            <h3 className="font-bold text-lg text-gray-800">{template.titulo}</h3>
+                                                            {template.descricao && (
+                                                                <p className="text-xs text-gray-600 mt-1">{template.descricao}</p>
+                                                            )}
+                                                        </div>
+                                                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">{template.chave}</span>
+                                                    </div>
+                                                    <textarea value={template.conteudo} onChange={(e) => atualizarTemplate(template.id, e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm" rows={template.conteudo.length > 100 ? 4 : 2} placeholder="Digite o texto do template..." />
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-8 flex gap-4">
+                                            <button onClick={salvarTemplates} disabled={savingTemplates} className="px-8 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50">
+                                                {savingTemplates ? '💾 Salvando...' : '💾 Salvar Alterações'}
+                                            </button>
+                                            <button onClick={carregarTemplates} disabled={loadingTemplates} className="px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 disabled:opacity-50">
+                                                🔄 Recarregar
+                                            </button>
+                                        </div>
+
+                                        <div className="mt-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                            <h4 className="font-bold text-blue-800 mb-2">ℹ️ Variáveis Disponíveis</h4>
+                                            <ul className="text-sm text-blue-700 space-y-1">
+                                                <li>• <code className="bg-blue-100 px-1">[DESCONTO]</code> - Valor do desconto (15% ou 20%)</li>
+                                                <li>• <code className="bg-blue-100 px-1">[CIDADE]</code> - Cidade do cliente</li>
+                                                <li>• <code className="bg-blue-100 px-1">[DATA]</code> - Data atual por extenso</li>
+                                            </ul>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <>
@@ -698,9 +526,9 @@
 
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <div className="mb-6 flex flex-col md:flex-row gap-4">
-                                        <input type="text" placeholder="🔍 Buscar por nome, email, CPF ou CNPJ..." value={busca} onChange={(e) => setBusca(e.target.value)} className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
-                                        <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                            <option value="todos">Todos os Status</option>
+                                        <input type="text" placeholder="🔍 Buscar..." value={busca} onChange={(e) => setBusca(e.target.value)} className="flex-1 p-3 border border-gray-300 rounded-lg" />
+                                        <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="p-3 border border-gray-300 rounded-lg">
+                                            <option value="todos">Todos</option>
                                             <option value="pendente">Pendente</option>
                                             <option value="aprovado">Aprovado</option>
                                             <option value="reprovado">Reprovado</option>
@@ -735,43 +563,12 @@
                                                                     : proposta.nome_fantasia}
                                                             </td>
                                                             <td className="px-4 py-3 text-sm text-gray-600">{proposta.email}</td>
-                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.cidade} - {proposta.estado}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.cidade}</td>
                                                             <td className="px-4 py-3 text-sm text-gray-600">{formatarData(proposta.created_at)}</td>
                                                             <td className="px-4 py-3">
-                                                                <div className="flex gap-2 items-center">
-                                                                    <button onClick={() => setSelectedProposta(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700" title="Ver Detalhes">👁️ Ver</button>
-                                                                    <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700" title="Gerar Contrato">📄 Contrato</button>
-                                                                    <div className="relative">
-                                                                        <button onClick={() => toggleStatusMenu(proposta.id)} disabled={proposta.updating} className={`px-3 py-1 text-white text-xs rounded hover:opacity-80 disabled:opacity-50 ${
-                                                                            proposta.status === 'pendente' ? 'bg-yellow-500' :
-                                                                            proposta.status === 'aprovado' ? 'bg-green-500' :
-                                                                            proposta.status === 'reprovado' ? 'bg-red-500' :
-                                                                            'bg-orange-500'
-                                                                        }`} title="Alterar Status">
-                                                                            {proposta.updating ? '⏳' : (
-                                                                                proposta.status === 'pendente' ? '⏳' :
-                                                                                proposta.status === 'aprovado' ? '✅' :
-                                                                                proposta.status === 'reprovado' ? '❌' : '📋'
-                                                                            )}
-                                                                        </button>
-                                                                        {proposta.showMenu && (
-                                                                            <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                                                                                <button onClick={() => atualizarStatus(proposta.id, 'pendente')} className="w-full px-3 py-2 text-left text-xs hover:bg-yellow-50 flex items-center gap-2">
-                                                                                    <span className="text-yellow-600">⏳</span> Pendente
-                                                                                </button>
-                                                                                <button onClick={() => atualizarStatus(proposta.id, 'aprovado')} className="w-full px-3 py-2 text-left text-xs hover:bg-green-50 flex items-center gap-2">
-                                                                                    <span className="text-green-600">✅</span> Aprovado
-                                                                                </button>
-                                                                                <button onClick={() => atualizarStatus(proposta.id, 'reprovado')} className="w-full px-3 py-2 text-left text-xs hover:bg-red-50 flex items-center gap-2">
-                                                                                    <span className="text-red-600">❌</span> Reprovado
-                                                                                </button>
-                                                                                <button onClick={() => atualizarStatus(proposta.id, 'lista_espera')} className="w-full px-3 py-2 text-left text-xs hover:bg-orange-50 flex items-center gap-2">
-                                                                                    <span className="text-orange-600">📋</span> Lista de Espera
-                                                                                </button>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
+                                                                <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                                                    📄 PDF
+                                                                </button>
                                                             </td>
                                                         </tr>
                                                     ))

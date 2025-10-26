@@ -553,25 +553,119 @@
             const salvarConfiguracoes = async () => {
                 setSavingConfig(true);
                 try {
+                    console.log('💾 Salvando configurações...');
                     
-                    // Salvar ou criar desconto percentual
-                    if (descontoId) {
-                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${descontoId}`, {
+                    // 1. Salvar TARIFA
+                    if (tarifaId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${tarifaId}`, {
                             method: 'PATCH',
                             headers: {
                                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                                 'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
-                                valor: String(descontoPercentual)
+                                valor: String(tarifaKwh)
                             })
                         });
+                        console.log('✅ Tarifa salva:', tarifaKwh);
                     } else {
                         await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
                             method: 'POST',
                             headers: {
                                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                                 'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                chave: 'tarifa_kwh',
+                                valor: String(tarifaKwh),
+                                descricao: 'Tarifa por kWh'
+                            })
+                        });
+                    }
+
+                    // 2. Salvar PROPORÇÃO ENERGIA
+                    if (proporcaoEnergiaId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${proporcaoEnergiaId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                valor: String(proporcaoEnergia)
+                            })
+                        });
+                        console.log('✅ Proporção Energia salva:', proporcaoEnergia);
+                    } else {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                chave: 'proporcao_energia',
+                                valor: String(proporcaoEnergia),
+                                descricao: 'Proporção de energia na conta'
+                            })
+                        });
+                    }
+
+                    // 3. Salvar PROPORÇÃO IMPOSTOS
+                    if (proporcaoImpostosId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${proporcaoImpostosId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                valor: String(proporcaoImpostos)
+                            })
+                        });
+                        console.log('✅ Proporção Impostos salva:', proporcaoImpostos);
+                    } else {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                chave: 'proporcao_impostos',
+                                valor: String(proporcaoImpostos),
+                                descricao: 'Proporção de impostos na conta'
+                            })
+                        });
+                    }
+
+                    // 4. Salvar DESCONTO
+                    if (descontoId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${descontoId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                valor: String(descontoPercentual)
+                            })
+                        });
+                        console.log('✅ Desconto salvo:', descontoPercentual);
+                    } else {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
                                 chave: 'desconto_percentual',
@@ -581,18 +675,17 @@
                         });
                     }
 
-                    // ... Lógica similar para Tarifa e Proporções (omitida para brevidade no script)
-
+                    console.log('✅ Todas as configurações salvas!');
                     alert(`✅ Configurações atualizadas com sucesso!\n\n` +
-                          `Desconto aplicado: ${descontoPercentual}%\n` +
-                          `Tarifa kWh: R$ ${tarifaKwh}\n` +
+                          `Desconto: ${descontoPercentual}%\n` +
+                          `Tarifa: R$ ${tarifaKwh}/kWh\n` +
                           `Proporção Energia: ${proporcaoEnergia}\n` +
                           `Proporção Impostos: ${proporcaoImpostos}`);
                     
                     await carregarConfiguracoes();
                 } catch (error) {
-                    console.error('Erro ao salvar configurações:', error);
-                    alert('Erro ao salvar configurações. Tente novamente.');
+                    console.error('❌ Erro ao salvar configurações:', error);
+                    alert('Erro ao salvar configurações. Verifique o console.');
                 } finally {
                     setSavingConfig(false);
                 }

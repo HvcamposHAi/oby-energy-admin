@@ -564,19 +564,32 @@
                                     <p className="text-center text-gray-500 py-8">Carregando templates...</p>
                                 ) : (
                                     <div className="space-y-6">
-                                        {templates.map((template) => (
-                                            <div key={template.id} className="bg-gray-50 p-4 rounded-lg">
-                                                <label className="block font-semibold text-gray-700 mb-2">
-                                                    {template.secao}
-                                                </label>
-                                                <textarea
-                                                    value={template.texto}
-                                                    onChange={(e) => atualizarTemplate(template.id, e.target.value)}
-                                                    rows="4"
-                                                    className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm"
-                                                />
-                                            </div>
-                                        ))}
+                                        {templates.map((template, index) => {
+                                            // Labels descritivas para cada template
+                                            const labels = {
+                                                1: '📝 Introdução do Contrato',
+                                                2: '📋 Cláusula 1 - Objeto do Contrato',
+                                                3: '💰 Cláusula 2 - Condições Financeiras',
+                                                4: '⚖️ Cláusula 3 - Responsabilidades',
+                                                5: '📄 Cláusula 4 - Disposições Gerais'
+                                            };
+                                            const label = template.secao || labels[template.id] || labels[index + 1] || `Seção ${index + 1}`;
+                                            
+                                            return (
+                                                <div key={template.id} className="bg-gray-50 p-4 rounded-lg">
+                                                    <label className="block font-semibold text-gray-700 mb-2">
+                                                        {label}
+                                                    </label>
+                                                    <textarea
+                                                        value={template.texto}
+                                                        onChange={(e) => atualizarTemplate(template.id, e.target.value)}
+                                                        rows="4"
+                                                        className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm"
+                                                        placeholder="Digite o texto desta seção do contrato..."
+                                                    />
+                                                </div>
+                                            );
+                                        })}
 
                                         <div className="flex gap-4">
                                             <button onClick={salvarTemplates} disabled={savingTemplates} className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50">

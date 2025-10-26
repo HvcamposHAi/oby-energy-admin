@@ -106,6 +106,7 @@
 
             const carregarConfiguracoes = async () => {
                 try {
+                    console.log('📥 Carregando configurações do banco...');
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?select=*`, {
                         headers: {
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
@@ -113,29 +114,35 @@
                         }
                     });
                     const data = await response.json();
+                    console.log('📥 Configurações recebidas:', data);
+                    
                     if (data && data.length > 0) {
                         data.forEach(config => {
                             if (config.chave === 'tarifa_kwh') {
                                 setTarifaKwh(config.valor);
                                 setTarifaId(config.id);
+                                console.log('✅ Tarifa carregada:', config.valor);
                             }
                             if (config.chave === 'proporcao_energia') {
                                 setProporcaoEnergia(config.valor);
                                 setProporcaoEnergiaId(config.id);
+                                console.log('✅ Proporção Energia carregada:', config.valor);
                             }
                             if (config.chave === 'proporcao_impostos') {
                                 setProporcaoImpostos(config.valor);
                                 setProporcaoImpostosId(config.id);
+                                console.log('✅ Proporção Impostos carregada:', config.valor);
                             }
                             // NOVO: Carregar desconto percentual
                             if (config.chave === 'desconto_percentual') {
                                 setDescontoPercentual(config.valor);
                                 setDescontoId(config.id);
+                                console.log('✅ Desconto carregado:', config.valor + '%', 'ID:', config.id);
                             }
                         });
                     }
                 } catch (error) {
-                    console.error('Erro ao carregar configurações:', error);
+                    console.error('❌ Erro ao carregar configurações:', error);
                 }
             };
 
@@ -195,10 +202,13 @@
             const salvarConfiguracoes = async () => {
                 setSavingConfig(true);
                 try {
+                    console.log('🔹 Iniciando salvamento do desconto:', descontoPercentual);
+                    
                     // Salvar ou criar desconto percentual
                     if (descontoId) {
+                        console.log('🔹 Atualizando desconto existente (ID:', descontoId, ')');
                         // Atualizar registro existente
-                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${descontoId}`, {
+                        const responseDesconto = await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${descontoId}`, {
                             method: 'PATCH',
                             headers: {
                                 'Authorization': `Bearer ${SUPABASE_KEY}`,
@@ -207,11 +217,20 @@
                                 'Prefer': 'return=representation'
                             },
                             body: JSON.stringify({
-                                valor: descontoPercentual,
+                                valor: String(descontoPercentual),
                                 updated_at: new Date().toISOString()
                             })
                         });
+                        
+                        if (responseDesconto.ok) {
+                            const dataDesconto = await responseDesconto.json();
+                            console.log('✅ Desconto atualizado com sucesso:', dataDesconto);
+                        } else {
+                            const errorText = await responseDesconto.text();
+                            console.error('❌ Erro ao atualizar desconto:', errorText);
+                        }
                     } else {
+                        console.log('🔹 Criando novo registro de desconto');
                         // Criar novo registro
                         const response = await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
                             method: 'POST',
@@ -223,15 +242,22 @@
                             },
                             body: JSON.stringify({
                                 chave: 'desconto_percentual',
-                                valor: descontoPercentual,
+                                valor: String(descontoPercentual),
                                 descricao: 'Percentual de desconto aplicado na proposta',
                                 created_at: new Date().toISOString(),
                                 updated_at: new Date().toISOString()
                             })
                         });
-                        const data = await response.json();
-                        if (data && data.length > 0) {
-                            setDescontoId(data[0].id);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log('✅ Desconto criado com sucesso:', data);
+                            if (data && data.length > 0) {
+                                setDescontoId(data[0].id);
+                            }
+                        } else {
+                            const errorText = await response.text();
+                            console.error('❌ Erro ao criar desconto:', errorText);
                         }
                     }
 
@@ -283,7 +309,14 @@
                         });
                     }
 
-                    alert('✅ Configurações atualizadas com sucesso!');
+                    alert(`✅ Configurações atualizadas com sucesso!\n\n` +
+                          `Desconto aplicado: ${descontoPercentual}%\n` +
+                          `Tarifa kWh: R$ ${tarifaKwh}\n` +
+                          `Proporção Energia: ${proporcaoEnergia}\n` +
+                          `Proporção Impostos: ${proporcaoImpostos}`);
+                    
+                    // Recarregar configurações para confirmar salvamento
+                    await carregarConfiguracoes();
                 } catch (error) {
                     console.error('Erro ao salvar configurações:', error);
                     alert('Erro ao salvar configurações. Tente novamente.');

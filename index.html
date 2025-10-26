@@ -286,46 +286,6 @@
                 }
             };
 
-            const atualizarStatus = async (propostaId, novoStatus) => {
-                try {
-                    setPropostas(prev => prev.map(p => 
-                        p.id === propostaId ? {...p, updating: true, showMenu: false} : {...p, showMenu: false}
-                    ));
-
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'apikey': SUPABASE_KEY,
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
-                        },
-                        body: JSON.stringify({ status: novoStatus })
-                    });
-
-                    if (response.ok) {
-                        setPropostas(prev => prev.map(p => 
-                            p.id === propostaId ? {...p, status: novoStatus, updating: false} : p
-                        ));
-                        setTimeout(() => carregarPropostas(), 500);
-                    } else {
-                        throw new Error('Erro ao atualizar');
-                    }
-                } catch (error) {
-                    console.error('Erro ao atualizar status:', error);
-                    alert('❌ Erro ao atualizar status: ' + error.message);
-                    setPropostas(prev => prev.map(p => 
-                        p.id === propostaId ? {...p, updating: false, showMenu: false} : p
-                    ));
-                }
-            };
-
-            const toggleStatusMenu = (propostaId) => {
-                setPropostas(prev => prev.map(p => 
-                    p.id === propostaId ? {...p, showMenu: !p.showMenu} : {...p, showMenu: false}
-                ));
-            };
-
             // ATUALIZADO: Gerar PDF com templates do banco
             const gerarContratoPDF = async (proposta) => {
                 const templatesData = {};

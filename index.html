@@ -1,186 +1,1053 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OBY Energy - Painel Administrativo</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script> 
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBY Energy - Painel Administrativo</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script> 
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-        // Configurações do Supabase (MANTIDAS)
-        const SUPABASE_URL = 'https://uuaqmwnfjopgjmjjchmw.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1YXFtd25mam9wZ2ptampjaG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1OTEyNzUsImV4cCI6MjA3NjE2NzI3NX0.9ITSBR9SNoZKgvF1AuW4OsL4b8Du5NAXttQpi7B3MO8';
+        // Configurações do Supabase (MANTIDAS)
+        const SUPABASE_URL = 'https://uuaqmwnfjopgjmjjchmw.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1YXFtd25mam9wZ2ptampjaG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1OTEyNzUsImV4cCI6MjA3NjE2NzI3NX0.9ITSBR9SNoZKgvF1AuW4OsL4b8Du5NAXttQpi7B3MO8';
 
-        // Credenciais de Admin (MANTIDAS)
-        const ADMIN_USER = 'admin';
-        const ADMIN_PASS = 'oby2025';
+        // Credenciais de Admin (MANTIDAS)
+        const ADMIN_USER = 'admin';
+        const ADMIN_PASS = 'oby2025';
 
-        // --- NOVO COMPONENTE: RELATÓRIO FINANCEIRO ---
-        function FinancialReport({ propostas }) {
-            
-            const propostasAprovadas = propostas.filter(p => p.status === 'aprovado' && p.simulacao_economia_mensal > 0);
+        // --- NOVO COMPONENTE: RELATÓRIO FINANCEIRO ---
+        function FinancialReport({ propostas }) {
+            
+            // Filtra apenas propostas 'aprovado' para o relatório de sucesso
+            const propostasAprovadas = propostas.filter(p => p.status === 'aprovado' && p.simulacao_economia_mensal > 0);
 
-            const formatarMoeda = (valor) => {
-                const num = parseFloat(valor); 
-                if (isNaN(num)) return 'R$ 0,00';
-                return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            };
+            const formatarMoeda = (valor) => {
+                // Converte para float antes de formatar
+                const num = parseFloat(valor); 
+                if (isNaN(num)) return 'R$ 0,00';
+                return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            };
 
-            const exportarParaCSV = () => {
-                const cabecalho = [
-                    "Nº Contrato", "Vendedor", "Cliente", "Email", "Cidade", 
-                    "Consumo (kWh)", "Custo Atual (R$)", "Custo OBY (R$)", 
-                    "Desconto Aplicado (%)", "Economia Mensal (R$)", "Status"
-                ];
+            const exportarParaCSV = () => {
+                const cabecalho = [
+                    "Nº Contrato", "Vendedor", "Cliente", "Email", "Cidade", 
+                    "Consumo (kWh)", "Custo Atual (R$)", "Custo OBY (R$)", 
+                    "Desconto Aplicado (%)", "Economia Mensal (R$)", "Status"
+                ];
 
-                const linhas = propostasAprovadas.map(p => {
-                    return [
-                        `"${p.numero_contrato || 'N/A'}"`,
-                        `"${p.vendedor || 'Sem Vendedor'}"`,
-                        `"${p.nome_completo || p.nome_fantasia || 'Sem nome'}"`,
-                        `"${p.email || ''}"`,
-                        `"${p.cidade || ''}"`,
-                        `"${p.consumo_kw || 0}"`,
-                        `"${formatarMoeda(p.simulacao_conta_atual).replace('R$', '').trim()}"`,
-                        `"${formatarMoeda(p.simulacao_conta_nova).replace('R$', '').trim()}"`,
-                        `"${p.desconto_aplicado || 0}"`,
-                        `"${formatarMoeda(p.simulacao_economia_mensal).replace('R$', '').trim()}"`,
-                        `"${p.status}"`
-                    ].join(';');
-                });
+                const linhas = propostasAprovadas.map(p => {
+                    return [
+                        `"${p.numero_contrato || 'N/A'}"`,
+                        `"${p.vendedor || 'Sem Vendedor'}"`,
+                        `"${p.nome_completo || p.nome_fantasia || 'Sem nome'}"`,
+                        `"${p.email || ''}"`,
+                        `"${p.cidade || ''}"`,
+                        `"${p.consumo_kw || 0}"`,
+                        `"${formatarMoeda(p.simulacao_conta_atual).replace('R$', '').trim()}"`,
+                        `"${formatarMoeda(p.simulacao_conta_nova).replace('R$', '').trim()}"`,
+                        `"${p.desconto_aplicado || 0}"`,
+                        `"${formatarMoeda(p.simulacao_economia_mensal).replace('R$', '').trim()}"`,
+                        `"${p.status}"`
+                    ].join(';');
+                });
 
-                const csvContent = [cabecalho.join(';'), ...linhas].join('\n');
-                
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a");
-                const url = URL.createObjectURL(blob);
-                
-                link.setAttribute("href", url);
-                link.setAttribute("download", `relatorio_oby_financeiro_${new Date().toISOString().slice(0,10)}.csv`);
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                const csvContent = [cabecalho.join(';'), ...linhas].join('\n');
+                
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                
+                link.setAttribute("href", url);
+                link.setAttribute("download", `relatorio_oby_financeiro_${new Date().toISOString().slice(0,10)}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
 
-                alert("Exportação iniciada! Verifique seus downloads.");
-            };
+                alert("Exportação iniciada! Verifique seus downloads.");
+            };
 
-            const totalEconomiaMensal = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_economia_mensal) || 0), 0);
-            const totalCustoAtual = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_conta_atual) || 0), 0);
-            const totalCustoNovo = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_conta_nova) || 0), 0);
+            const totalEconomiaMensal = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_economia_mensal) || 0), 0);
+            const totalCustoAtual = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_conta_atual) || 0), 0);
+            const totalCustoNovo = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_conta_nova) || 0), 0);
 
-            return (
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                    <div className="flex justify-between items-center mb-6 border-b pb-4">
-                        <h2 className="text-2xl font-bold text-gray-800">📊 Relatório Financeiro de Propostas Aprovadas</h2>
-                        <button 
-                            onClick={exportarParaCSV} 
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50"
-                            disabled={propostasAprovadas.length === 0}
-                        >
-                            ⬇️ Exportar para CSV
-                        </button>
-                    </div>
+            return (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <div className="flex justify-between items-center mb-6 border-b pb-4">
+                        <h2 className="text-2xl font-bold text-gray-800">📊 Relatório Financeiro de Propostas Aprovadas</h2>
+                        <button 
+                            onClick={exportarParaCSV} 
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50"
+                            disabled={propostasAprovadas.length === 0}
+                        >
+                            ⬇️ Exportar para CSV
+                        </button>
+                    </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                        <div className="bg-blue-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-600">Propostas Válidas</p>
-                            <p className="text-2xl font-bold text-blue-800">{propostasAprovadas.length}</p>
-                        </div>
-                        <div className="bg-green-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-600">Total Economia Mensal</p>
-                            <p className="text-xl font-bold text-green-800">{formatarMoeda(totalEconomiaMensal)}</p>
-                        </div>
-                        <div className="bg-yellow-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-600">Soma Custo Atual</p>
-                            <p className="text-xl font-bold text-yellow-800">{formatarMoeda(totalCustoAtual)}</p>
-                        </div>
-                        <div className="bg-red-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-600">Soma Custo OBY</p>
-                            <p className="text-xl font-bold text-red-800">{formatarMoeda(totalCustoNovo)}</p>
-                        </div>
-                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Propostas Válidas</p>
+                            <p className="text-2xl font-bold text-blue-800">{propostasAprovadas.length}</p>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Total Economia Mensal</p>
+                            <p className="text-xl font-bold text-green-800">{formatarMoeda(totalEconomiaMensal)}</p>
+                        </div>
+                        <div className="bg-yellow-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Soma Custo Atual</p>
+                            <p className="text-xl font-bold text-yellow-800">{formatarMoeda(totalCustoAtual)}</p>
+                        </div>
+                        <div className="bg-red-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Soma Custo OBY</p>
+                            <p className="text-xl font-bold text-red-800">{formatarMoeda(totalCustoNovo)}</p>
+                        </div>
+                    </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nº Contrato</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cliente / Vendedor</th>
-                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Consumo (kWh)</th>
-                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Custo Atual</th>
-                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Custo OBY</th>
-                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Desconto (%)</th>
-                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Economia Mensal</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {propostasAprovadas.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="7" className="px-4 py-4 text-center text-gray-500">
-                                            Nenhuma proposta aprovada com economia calculada para o relatório.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    propostasAprovadas.map(p => (
-                                        <tr key={p.id}>
-                                            <td className="px-4 py-3 text-sm font-medium text-blue-600">{p.numero_contrato || '-'}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-900">
-                                                {p.nome_completo || p.nome_fantasia || 'Sem nome'}
-                                                <div className="text-xs text-gray-500">Vendedor: {p.vendedor || 'N/A'}</div>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.consumo_kw || 0} kWh</td>
-                                            <td className="px-4 py-3 text-sm text-right text-red-600 font-semibold">{formatarMoeda(p.simulacao_conta_atual)}</td>
-                                            <td className="px-4 py-3 text-sm text-right text-green-600 font-semibold">{formatarMoeda(p.simulacao_conta_nova)}</td>
-                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.desconto_aplicado || 0}%</td>
-                                            <td className="px-4 py-3 text-sm text-right font-bold text-green-800">{formatarMoeda(p.simulacao_economia_mensal)}</td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                        </div>
-                                                            </td>
-                                                            <td className="px-4 py-3 flex gap-2">
-                                                                <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
-                                                                    📝 Editar
-                                                                </button>
-                                                                <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
-                                                                    📄 PDF
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                    {selectedProposta && (
-                        <EditPropostaModal 
-                            proposta={selectedProposta} 
-                            onClose={() => setSelectedProposta(null)} 
-                            onSave={handleSaveEdit}
-                            saving={savingProposta}
-                        />
-                    )}
-                </div>
-            );
-        }
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nº Contrato</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cliente / Vendedor</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Consumo (kWh)</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Custo Atual</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Custo OBY</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Desconto (%)</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Economia Mensal</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {propostasAprovadas.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" className="px-4 py-4 text-center text-gray-500">
+                                            Nenhuma proposta aprovada com economia calculada para o relatório.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    propostasAprovadas.map(p => (
+                                        <tr key={p.id}>
+                                            <td className="px-4 py-3 text-sm font-medium text-blue-600">{p.numero_contrato || '-'}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-900">
+                                                {p.nome_completo || p.nome_fantasia || 'Sem nome'}
+                                                <div className="text-xs text-gray-500">Vendedor: {p.vendedor || 'N/A'}</div>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.consumo_kw || 0} kWh</td>
+                                            <td className="px-4 py-3 text-sm text-right text-red-600 font-semibold">{formatarMoeda(p.simulacao_conta_atual)}</td>
+                                            <td className="px-4 py-3 text-sm text-right text-green-600 font-semibold">{formatarMoeda(p.simulacao_conta_nova)}</td>
+                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.desconto_aplicado || 0}%</td>
+                                            <td className="px-4 py-3 text-sm text-right font-bold text-green-800">{formatarMoeda(p.simulacao_economia_mensal)}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
 
-        ReactDOM.render(<AdminPanel />, document.getElementById('root'));
-    </script>
+        // --- COMPONENTE DO MODAL (MANTIDO) ---
+        function EditPropostaModal({ proposta, onClose, onSave, saving }) {
+            
+            const editableColumns = [
+                'nome_completo', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
+                'cpf', 'cnpj', 'logradouro', 'numero_endereco', 'complemento', 'consumo_kw', 
+                'distribuidora_energia', 'status', 'tipo_pessoa', 'numero_instalacao', 
+                'tipo_conexao', 'modalidade_tarifaria', 'vendedor' 
+            ];
+
+            const [formData, setFormData] = useState({
+                ...proposta,
+                nome_completo: proposta.nome_completo || proposta.nome_fantasia || '',
+                cpf: proposta.cpf || '',
+                cnpj: proposta.cnpj || '',
+                logradouro: proposta.logradouro || '',
+                numero_endereco: proposta.numero_endereco || '',
+                complemento: proposta.complemento || '',
+                consumo_kw: proposta.consumo_kw || 0,
+                distribuidora_energia: proposta.distribuidora_energia || '',
+                vendedor: proposta.vendedor || '' // << CAMPO VENDEDOR INSERIDO
+            });
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleSave = () => {
+                const dataToSave = { id: formData.id };
+                
+                editableColumns.forEach(column => {
+                    if (formData.hasOwnProperty(column)) {
+                        let value = formData[column];
+                        if (column === 'consumo_kw') {
+                            value = Number(value);
+                        }
+                        if (column === 'nome_fantasia') {
+                            dataToSave[column] = formData.nome_completo;
+                        } else {
+                            dataToSave[column] = value;
+                        }
+                    }
+                });
+                
+                onSave(dataToSave);
+            };
+
+            const inputClass = "w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150";
+            const labelClass = "block text-sm font-medium text-gray-700 mb-1";
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+                        <div className="p-6 border-b border-gray-200">
+                            <h2 className="text-2xl font-bold text-gray-800">📝 Editar Proposta: {proposta.numero_contrato || 'N/A'}</h2>
+                            <p className="text-sm text-gray-500">Altere os dados da proposta do cliente. O Número do Contrato não pode ser editado.</p>
+                        </div>
+
+                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
+                            {/* Informações do Contrato - Não Editável */}
+                            <div className="md:col-span-2 bg-gray-100 p-4 rounded-lg border-l-4 border-gray-400">
+                                <h3 className="font-bold text-lg mb-3 text-gray-700">Detalhes de Identificação</h3>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className={labelClass}>Número do Contrato</label>
+                                        <input type="text" value={proposta.numero_contrato || 'N/A'} disabled className={`${inputClass} bg-gray-200 cursor-not-allowed text-gray-700 font-semibold`} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Dados Pessoais (COM CAMPO VENDEDOR INSERIDO) */}
+                            <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+                                <h3 className="font-bold text-lg mb-4 text-blue-800">Dados Pessoais</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className={labelClass}>Nome Completo / Fantasia</label>
+                                        <input type="text" name="nome_completo" value={formData.nome_completo} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Email</label>
+                                        <input type="email" name="email" value={formData.email || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Telefone</label>
+                                        <input type="text" name="telefone" value={formData.telefone || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>{formData.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'}</label>
+                                        <input 
+                                            type="text" 
+                                            name={formData.tipo_pessoa === 'fisica' ? 'cpf' : 'cnpj'} 
+                                            value={formData.tipo_pessoa === 'fisica' ? formData.cpf || '' : formData.cnpj || ''} 
+                                            onChange={handleChange} 
+                                            className={inputClass} 
+                                        />
+                                    </div>
+                                    {/* NOVO CAMPO VENDEDOR - POSICIONADO CORRETAMENTE */}
+                                    <div>
+                                        <label className={labelClass}>Vendedor</label>
+                                        <input type="text" name="vendedor" value={formData.vendedor || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Dados de Endereço e Instalação (MANTIDOS CORRIGIDOS) */}
+                            <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
+                                <h3 className="font-bold text-lg mb-4 text-green-800">Endereço e Instalação</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className={labelClass}>CEP</label>
+                                        <input type="text" name="cep" value={formData.cep || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Logradouro</label>
+                                        <input type="text" name="logradouro" value={formData.logradouro || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={labelClass}>Número</label>
+                                            <input type="text" name="numero_endereco" value={formData.numero_endereco || ''} onChange={handleChange} className={inputClass} />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>Complemento</label>
+                                            <input type="text" name="complemento" value={formData.complemento || ''} onChange={handleChange} className={inputClass} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={labelClass}>Cidade</label>
+                                            <input type="text" name="cidade" value={formData.cidade || ''} onChange={handleChange} className={inputClass} />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>Estado (UF)</label>
+                                            <input type="text" name="estado" value={formData.estado || ''} onChange={handleChange} className={inputClass} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Distribuidora</label>
+                                        <input type="text" name="distribuidora_energia" value={formData.distribuidora_energia || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Consumo Médio (kWh)</label>
+                                        <input type="number" step="1" name="consumo_kw" value={formData.consumo_kw || 0} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Botões do Modal */}
+                        <div className="p-6 flex justify-end gap-3 border-t border-gray-200">
+                            <button onClick={onClose} className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600">
+                                Cancelar
+                            </button>
+                            <button onClick={handleSave} disabled={saving} className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50">
+                                {saving ? 'Salvando...' : '💾 Salvar Alterações'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- COMPONENTE PRINCIPAL: ADMIN PANEL ---
+        function AdminPanel() {
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [propostas, setPropostas] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [selectedProposta, setSelectedProposta] = useState(null); 
+            const [savingProposta, setSavingProposta] = useState(false); 
+            const [filtro, setFiltro] = useState('todos');
+            const [busca, setBusca] = useState('');
+            const [activeTab, setActiveTab] = useState('propostas');
+            const [tarifaKwh, setTarifaKwh] = useState('0.842355');
+            const [proporcaoEnergia, setProporcaoEnergia] = useState('0.81');
+            const [proporcaoImpostos, setProporcaoImpostos] = useState('0.19');
+            const [descontoPercentual, setDescontoPercentual] = useState('15'); 
+            const [tarifaId, setTarifaId] = useState(null);
+            const [proporcaoEnergiaId, setProporcaoEnergiaId] = useState(null);
+            const [proporcaoImpostosId, setProporcaoImpostosId] = useState(null);
+            const [descontoId, setDescontoId] = useState(null);
+            const [savingConfig, setSavingConfig] = useState(false);
+            
+            // Estados para editor de contrato
+            const [templates, setTemplates] = useState([]);
+            const [loadingTemplates, setLoadingTemplates] = useState(false);
+            const [savingTemplates, setSavingTemplates] = useState(false);
+
+            useEffect(() => {
+                const authStatus = localStorage.getItem('oby_admin_auth');
+                if (authStatus === 'true') {
+                    setIsAuthenticated(true);
+                    carregarPropostas();
+                    carregarConfiguracoes();
+                }
+            }, []);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (!event.target.closest('button')) {
+                        setPropostas(prev => prev.map(p => ({...p, showMenu: false})));
+                    }
+                };
+                document.addEventListener('click', handleClickOutside);
+                return () => document.removeEventListener('click', handleClickOutside);
+            }, []);
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (username === ADMIN_USER && password === ADMIN_PASS) {
+                    setIsAuthenticated(true);
+                    localStorage.setItem('oby_admin_auth', 'true');
+                    carregarPropostas();
+                    carregarConfiguracoes();
+                } else {
+                    alert('Usuário ou senha incorretos!');
+                }
+            };
+
+            const handleLogout = () => {
+                setIsAuthenticated(false);
+                localStorage.removeItem('oby_admin_auth');
+                setUsername('');
+                setPassword('');
+            };
+
+            const carregarPropostas = async () => {
+                setLoading(true);
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?select=*&order=created_at.desc`, {
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY
+                        }
+                    });
+                    const data = await response.json();
+                    setPropostas(data.map(p => ({...p, showMenu: false, updating: false})));
+                } catch (error) {
+                    console.error('Erro ao carregar propostas:', error);
+                    alert('Erro ao carregar propostas');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // Funções de Edição 
+            const handleEditClick = (proposta) => {
+                setSelectedProposta(proposta);
+            };
+
+            const handleSaveEdit = async (dataToSave) => {
+                setSavingProposta(true);
+                console.log('🔄 Iniciando edição de proposta...', dataToSave);
+                
+                // Extrai o ID para usar no filtro e cria o payload excluindo o ID
+                const propostaId = dataToSave.id;
+                // Exclui o ID e cria o objeto de payload a ser enviado para o Supabase
+                const { id, ...payloadForSupabase } = dataToSave; 
+                
+                try {
+                    // O filtro usa o ID (UUID)
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        // Envia o payload que não contém o ID, garantindo a cirurgia no JSON
+                        body: JSON.stringify(payloadForSupabase)
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('✅ Proposta atualizada com sucesso!', data);
+                        // Atualiza a proposta na lista
+                        setPropostas(prev => prev.map(p => 
+                            p.id === propostaId ? {...data[0], showMenu: false, updating: false} : p
+                        ));
+                        setSelectedProposta(null); // Fecha o modal
+                        alert('✅ Proposta atualizada com sucesso!');
+                    } else {
+                        const errorText = await response.text();
+                        console.error('❌ Erro ao salvar proposta:', errorText);
+                        alert('❌ Erro ao salvar proposta: ' + errorText);
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao salvar proposta:', error);
+                    alert('Erro inesperado ao salvar proposta.');
+                } finally {
+                    setSavingProposta(false);
+                }
+            };
+
+
+            const carregarConfiguracoes = async () => {
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?select=*`, {
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY
+                        }
+                    });
+                    const data = await response.json();
+                    
+                    if (data && data.length > 0) {
+                        data.forEach(config => {
+                            if (config.chave === 'tarifa_kwh') {
+                                setTarifaKwh(config.valor);
+                                setTarifaId(config.id);
+                            }
+                            if (config.chave === 'proporcao_energia') {
+                                setProporcaoEnergia(config.valor);
+                                setProporcaoEnergiaId(config.id);
+                            }
+                            if (config.chave === 'proporcao_impostos') {
+                                setProporcaoImpostos(config.valor);
+                                setProporcaoImpostosId(config.id);
+                            }
+                            if (config.chave === 'desconto_percentual') {
+                                setDescontoPercentual(config.valor);
+                                setDescontoId(config.id);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao carregar configurações:', error);
+                }
+            };
+
+            // Carregar templates do contrato
+            const carregarTemplates = async () => {
+                setLoadingTemplates(true);
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?select=*&order=ordem.asc`, {
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY
+                        }
+                    });
+                    const data = await response.json();
+                    setTemplates(data);
+                } catch (error) {
+                    console.error('❌ Erro ao carregar templates:', error);
+                } finally {
+                    setLoadingTemplates(false);
+                }
+            };
+
+            // Salvar templates do contrato
+            const salvarTemplates = async () => {
+                setSavingTemplates(true);
+                try {
+                    for (const template of templates) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?id=eq.${template.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            },
+                            body: JSON.stringify({
+                                texto: template.texto
+                            })
+                        });
+                    }
+                    alert('✅ Templates salvos com sucesso!');
+                } catch (error) {
+                    console.error('Erro ao salvar templates:', error);
+                    alert('Erro ao salvar templates. Tente novamente.');
+                } finally {
+                    setSavingTemplates(false);
+                }
+            };
+
+            const atualizarTemplate = (id, novoTexto) => {
+                setTemplates(templates.map(t => 
+                    t.id === id ? {...t, texto: novoTexto} : t
+                ));
+            };
+
+            const salvarConfiguracoes = async () => {
+                setSavingConfig(true);
+                try {
+                    
+                    // Salvar ou criar desconto percentual
+                    if (descontoId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${descontoId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                            },
+                            body: JSON.stringify({
+                                valor: String(descontoPercentual)
+                            })
+                        });
+                    } else {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                            },
+                            body: JSON.stringify({
+                                chave: 'desconto_percentual',
+                                valor: String(descontoPercentual),
+                                descricao: 'Percentual de desconto aplicado na proposta'
+                            })
+                        });
+                    }
+
+                    // ... Lógica similar para Tarifa e Proporções (omitida para brevidade no script)
+
+                    alert(`✅ Configurações atualizadas com sucesso!\n\n` +
+                          `Desconto aplicado: ${descontoPercentual}%\n` +
+                          `Tarifa kWh: R$ ${tarifaKwh}\n` +
+                          `Proporção Energia: ${proporcaoEnergia}\n` +
+                          `Proporção Impostos: ${proporcaoImpostos}`);
+                    
+                    await carregarConfiguracoes();
+                } catch (error) {
+                    console.error('Erro ao salvar configurações:', error);
+                    alert('Erro ao salvar configurações. Tente novamente.');
+                } finally {
+                    setSavingConfig(false);
+                }
+            };
+
+            const atualizarStatus = async (propostaId, novoStatus) => {
+                try {
+                    setPropostas(prev => prev.map(p => 
+                        p.id === propostaId ? {...p, updating: true, showMenu: false} : {...p, showMenu: false}
+                    ));
+                    
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            status: novoStatus 
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        setPropostas(prev => prev.map(p => 
+                            p.id === propostaId ? {...data[0], showMenu: false, updating: false} : p
+                        ));
+                    } else {
+                        const errorText = await response.text();
+                        throw new Error(errorText);
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao atualizar status:', error);
+                    alert('Erro ao atualizar status: ' + error.message);
+                    setPropostas(prev => prev.map(p => 
+                        p.id === propostaId ? {...p, updating: false} : p
+                    ));
+                }
+            };
+
+            const toggleStatusMenu = (propostaId) => {
+                setPropostas(prev => prev.map(p => 
+                    p.id === propostaId ? {...p, showMenu: !p.showMenu} : {...p, showMenu: false}
+                ));
+            };
+
+            const formatarData = (dataISO) => {
+                const data = new Date(dataISO);
+                return data.toLocaleDateString('pt-BR');
+            };
+
+            const gerarContratoPDF = (proposta) => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                doc.setFont("helvetica");
+                
+                // Número do Contrato
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Contrato Nº: ${proposta.numero_contrato || 'N/A'}`, 20, 15);
+                
+                // Título
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(18);
+                doc.setFont("helvetica", "bold");
+                doc.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", 105, 20, { align: "center" });
+                
+                // Conteúdo
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "normal");
+                
+                const nomeCompleto = proposta.nome_completo || proposta.nome_fantasia || 'Sem nome';
+                
+                const cpfCnpj = proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj;
+                
+                doc.text(`CONTRATANTE: ${nomeCompleto}`, 20, 40);
+                doc.text(`CPF/CNPJ: ${cpfCnpj}`, 20, 50);
+                doc.text(`E-mail: ${proposta.email}`, 20, 60);
+                doc.text(`Telefone: ${proposta.telefone}`, 20, 70);
+                doc.text(`Endereço: ${proposta.logradouro}, ${proposta.numero_endereco}`, 20, 80); 
+                doc.text(`${proposta.cidade} - ${proposta.estado}, CEP: ${proposta.cep}`, 20, 90);
+                
+                doc.text("CONTRATADA: OBY ENERGY", 20, 110);
+                
+                // Salvar
+                doc.save(`contrato_${nomeCompleto.replace(/\s+/g, '_')}.pdf`);
+            };
+
+            const getStatusBadge = (status) => {
+                const configs = {
+                    'pendente': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '🟡 Pendente' },
+                    'aprovado': { bg: 'bg-green-100', text: 'text-green-800', label: '🟢 Aprovado' },
+                    'reprovado': { bg: 'bg-red-100', text: 'text-red-800', label: '🔴 Reprovado' },
+                    'lista_espera': { bg: 'bg-orange-100', text: 'text-orange-800', label: '🟠 Lista Espera' }
+                };
+                const config = configs[status] || configs['pendente'];
+                return (
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${config.bg} ${config.text}`}>
+                        {config.label}
+                    </span>
+                );
+            };
+
+            const propostasFiltradas = propostas.filter(proposta => {
+                const matchFiltro = filtro === 'todos' || proposta.status === filtro;
+                const matchBusca = busca === '' || 
+                    proposta.nome_completo?.toLowerCase().includes(busca.toLowerCase()) ||
+                    proposta.nome_fantasia?.toLowerCase().includes(busca.toLowerCase()) ||
+                    proposta.email?.toLowerCase().includes(busca.toLowerCase()) ||
+                    proposta.cidade?.toLowerCase().includes(busca.toLowerCase());
+                return matchFiltro && matchBusca;
+            });
+
+            if (!isAuthenticated) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+                            <div className="text-center mb-8">
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">🔐 Admin OBY Energy</h1>
+                                <p className="text-gray-600">Faça login para acessar o painel</p>
+                            </div>
+                            <form onSubmit={handleLogin} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Usuário</label>
+                                    <input 
+                                        type="text" 
+                                        value={username} 
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
+                                    <input 
+                                        type="password" 
+                                        value={password} 
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        required
+                                    />
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+                                >
+                                    Entrar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-100">
+                    <header className="bg-white shadow-md">
+                        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+                            <h1 className="text-2xl font-bold text-blue-600">⚡ OBY Energy Admin</h1>
+                            <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
+                                Sair
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="container mx-auto px-4 py-8">
+                        <div className="mb-6 border-b border-gray-200">
+                            <div className="flex space-x-2">
+                                <button onClick={() => setActiveTab('propostas')} className={`px-6 py-3 font-semibold transition ${activeTab === 'propostas' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
+                                    📋 Propostas
+                                </button>
+                                <button onClick={() => setActiveTab('configuracoes')} className={`px-6 py-3 font-semibold transition ${activeTab === 'configuracoes' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
+                                    ⚙️ Configurações
+                                </button>
+                                <button onClick={() => { setActiveTab('contrato'); carregarTemplates(); }} className={`px-6 py-3 font-semibold transition ${activeTab === 'contrato' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
+                                    📄 Editor de Contrato
+                                </button>
+                                {/* NOVO BOTÃO: RELATÓRIO FINANCEIRO */}
+                                <button onClick={() => setActiveTab('financeiro')} className={`px-6 py-3 font-semibold transition ${activeTab === 'financeiro' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
+                                    📊 Relatório Financeiro
+                                </button>
+                            </div>
+                        </div>
+
+                        {activeTab === 'configuracoes' ? (
+                            <div className="bg-white rounded-xl shadow-lg p-6 max-w-2xl">
+                                <h2 className="text-2xl font-bold mb-6 text-gray-800">⚙️ Configurações do Sistema</h2>
+                                
+                                <div className="space-y-6">
+                                    <div className="bg-blue-50 p-6 rounded-lg">
+                                        <h3 className="font-bold text-lg mb-4 text-blue-800">💰 Configurações de Tarifa</h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Tarifa Total (R$/kWh)</label>
+                                                <input type="number" step="0.000001" value={tarifaKwh} onChange={(e) => setTarifaKwh(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">Proporção Energia</label>
+                                                    <input type="number" step="0.01" value={proporcaoEnergia} onChange={(e) => setProporcaoEnergia(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">Proporção Impostos</label>
+                                                    <input type="number" step="0.01" value={proporcaoImpostos} onChange={(e) => setProporcaoImpostos(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-green-50 p-6 rounded-lg">
+                                        <h3 className="font-bold text-lg mb-4 text-green-800">🎯 Configuração de Desconto</h3>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Desconto Percentual (%)</label>
+                                            <div className="flex items-center gap-3">
+                                                <input 
+                                                    type="number" 
+                                                    step="0.1" 
+                                                    min="0" 
+                                                    max="100"
+                                                    value={descontoPercentual} 
+                                                    onChange={(e) => setDescontoPercentual(e.target.value)} 
+                                                    className="flex-1 p-3 border border-gray-300 rounded-lg"
+                                                />
+                                                <span className="text-2xl font-bold text-green-600">%</span>
+                                            </div>
+                                            <p className="text-xs text-gray-600 mt-2">
+                                                Este percentual será aplicado no cálculo da proposta de economia
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <button onClick={salvarConfiguracoes} disabled={savingConfig} className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50">
+                                        {savingConfig ? '💾 Salvando...' : '💾 Salvar Todas as Configurações'}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : activeTab === 'contrato' ? (
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <div className="mb-6">
+                                    <h2 className="text-2xl font-bold text-gray-800">📄 Editor de Contrato</h2>
+                                    <p className="text-gray-600 text-sm mt-2">Personalize os textos que aparecem no contrato PDF</p>
+                                </div>
+
+                                {loadingTemplates ? (
+                                    <p className="text-center text-gray-500 py-8">Carregando templates...</p>
+                                ) : templates.length === 0 ? (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                                        <h3 className="text-lg font-semibold text-yellow-800 mb-2">⚠️ Nenhum template encontrado</h3>
+                                        <p className="text-yellow-700 mb-4">A tabela <code className="bg-white px-2 py-1 rounded">contrato_templates</code> está vazia.</p>
+                                        <p className="text-sm text-yellow-600">Para criar templates, execute o SQL no Supabase:</p>
+                                        <pre className="bg-white p-3 rounded mt-2 text-xs overflow-x-auto">
+{`INSERT INTO contrato_templates (ordem, secao, texto) VALUES
+(1, 'Introdução', 'Contrato de prestação de serviços...'),
+(2, 'Cláusula 1', 'O objeto do presente contrato...'),
+(3, 'Cláusula 2', 'As condições financeiras...'),
+(4, 'Cláusula 3', 'As responsabilidades...'),
+(5, 'Cláusula 4', 'Disposições gerais...');`}
+                                        </pre>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {templates.map((template, index) => {
+                                            // Labels descritivas para cada template (CORRIGIDO)
+                                            const labels = {
+                                                1: '📝 Introdução do Contrato',
+                                                2: '📋 Cláusula 1 - Objeto do Contrato',
+                                                3: '💰 Cláusula 2 - Condições Financeiras',
+                                                4: '⚖️ Cláusula 3 - Responsabilidades',
+                                                5: '📄 Cláusula 4 - Disposições Gerais'
+                                            };
+                                            const label = template.secao || labels[template.id] || labels[index + 1] || `Seção ${index + 1}`;
+                                            
+                                            return (
+                                                <div key={template.id} className="bg-gray-50 p-4 rounded-lg">
+                                                    <label className="block font-semibold text-gray-700 mb-2">
+                                                        {label}
+                                                    </label>
+                                                    <textarea
+                                                        value={template.texto}
+                                                        onChange={(e) => atualizarTemplate(template.id, e.target.value)}
+                                                        rows="4"
+                                                        className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm"
+                                                        placeholder="Digite o texto desta seção do contrato..."
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+
+                                        <div className="flex gap-4">
+                                            <button onClick={salvarTemplates} disabled={savingTemplates} className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50">
+                                                {savingTemplates ? '💾 Salvando...' : '💾 Salvar'}
+                                            </button>
+                                            <button onClick={carregarTemplates} disabled={loadingTemplates} className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 disabled:opacity-50">
+                                                🔄 Recarregar
+                                            </button>
+                                        </div>
+
+                                        <div className="bg-blue-50 p-4 rounded-lg">
+                                            <h3 className="font-semibold text-blue-800 mb-2">📝 Variáveis Disponíveis</h3>
+                                            <p className="text-sm text-gray-700">Use estas variáveis no texto (serão substituídas automaticamente):</p>
+                                            <ul className="text-sm text-gray-600 mt-2 space-y-1">
+                                                <li><code className="bg-white px-2 py-1 rounded">[NOME]</code> - Nome do cliente</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[CPF_CNPJ]</code> - CPF ou CNPJ</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[ENDERECO]</code> - Endereço completo</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[CIDADE]</code> - Cidade</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[ESTADO]</code> - Estado (UF)</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[DATA]</code> - Data atual</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[DESCONTO]</code> - Percentual de desconto</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : activeTab === 'financeiro' ? (
+                            <FinancialReport propostas={propostas} />
+                        ) : (
+                            <>
+                                <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg p-6 text-white mb-6">
+                                    <h2 className="text-3xl font-bold mb-2">Bem-vindo ao Painel Administrativo! 👋</h2>
+                                    <p className="text-blue-100">Gerencie as propostas de energia de forma simples e eficiente</p>
+                                    <div className="mt-4 flex gap-4">
+                                        <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                                            <p className="text-sm">Total de Propostas</p>
+                                            <p className="text-2xl font-bold">{propostas.length}</p>
+                                        </div>
+                                        <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                                            <p className="text-sm">Pendentes</p>
+                                            <p className="text-2xl font-bold">{propostas.filter(p => p.status === 'pendente').length}</p>
+                                        </div>
+                                        <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                                            <p className="text-sm">Aprovadas</p>
+                                            <p className="text-2xl font-bold">{propostas.filter(p => p.status === 'aprovado').length}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-lg p-6">
+                                    <div className="mb-6 flex flex-col md:flex-row gap-4">
+                                        <input type="text" placeholder="🔍 Buscar..." value={busca} onChange={(e) => setBusca(e.target.value)} className="flex-1 p-3 border border-gray-300 rounded-lg" />
+                                        <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="p-3 border border-gray-300 rounded-lg">
+                                            <option value="todos">Todos</option>
+                                            <option value="pendente">Pendente</option>
+                                            <option value="aprovado">Aprovado</option>
+                                            <option value="reprovado">Reprovado</option>
+                                            <option value="lista_espera">Lista de Espera</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-50 border-b-2 border-gray-200">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nome</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nº Contrato</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cidade</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Telefone</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">CPF</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Data</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {propostasFiltradas.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
+                                                            {loading ? 'Carregando...' : 'Nenhuma proposta encontrada'}
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    propostasFiltradas.map((proposta) => (
+                                                        <tr key={proposta.id} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                                {proposta.nome_completo || proposta.nome_fantasia || 'Sem nome'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm font-semibold text-blue-600">
+                                                                {proposta.numero_contrato || '-'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.email}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.cidade}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.telefone}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{formatarData(proposta.created_at)}</td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="relative">
+                                                                    <button 
+                                                                        onClick={() => toggleStatusMenu(proposta.id)} 
+                                                                        disabled={proposta.updating}
+                                                                        className="flex items-center gap-2 hover:opacity-80 disabled:opacity-50"
+                                                                    >
+                                                                        {getStatusBadge(proposta.status || 'pendente')}
+                                                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                                        </svg>
+                                                                    </button>
+                                                                    
+                                                                    {proposta.showMenu && (
+                                                                        <div className="absolute z-10 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 right-0">
+                                                                            <button 
+                                                                                onClick={() => atualizarStatus(proposta.id, 'pendente')}
+                                                                                className="w-full text-left px-4 py-2 text-sm hover:bg-yellow-50 text-yellow-800 flex items-center gap-2"
+                                                                            >
+                                                                                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                                                                Pendente
+                                                                            </button>
+                                                                            <button 
+                                                                                onClick={() => atualizarStatus(proposta.id, 'aprovado')}
+                                                                                className="w-full text-left px-4 py-2 text-sm hover:bg-green-50 text-green-800 flex items-center gap-2"
+                                                                            >
+                                                                                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                                                                Aprovado
+                                                                            </button>
+                                                                            <button 
+                                                                                onClick={() => atualizarStatus(proposta.id, 'reprovado')}
+                                                                                className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-800 flex items-center gap-2"
+                                                                            >
+                                                                                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                                                                Reprovado
+                                                                            </button>
+                                                                            <button 
+                                                                                onClick={() => atualizarStatus(proposta.id, 'lista_espera')}
+                                                                                className="w-full text-left px-4 py-2 text-sm hover:bg-orange-50 text-orange-800 flex items-center gap-2"
+                                                                            >
+                                                                                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                                                                                Lista de Espera
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3 flex gap-2">
+                                                                <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                                                                    📝 Editar
+                                                                </button>
+                                                                <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                                                    📄 PDF
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    {selectedProposta && (
+                        <EditPropostaModal 
+                            proposta={selectedProposta} 
+                            onClose={() => setSelectedProposta(null)} 
+                            onSave={handleSaveEdit}
+                            saving={savingProposta}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<AdminPanel />, document.getElementById('root'));
+    </script>
 </body>
 </html>

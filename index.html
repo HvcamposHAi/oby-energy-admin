@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OBY Energy - Painel Administrativo</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -24,7 +24,7 @@
         const ADMIN_USER = 'admin';
         const ADMIN_PASS = 'oby2025';
 
-        // Componente do Modal de Edição (CORRIGIDO)
+        // Componente do Modal de Edição (CORRIGIDO PARA O NOVO ERRO)
         function EditPropostaModal({ proposta, onClose, onSave, saving }) {
             // Usa os nomes de colunas CORRETOS do banco de dados para o estado
             const [formData, setFormData] = useState({
@@ -45,10 +45,11 @@
             };
 
             const handleSave = () => {
-                // Filtra apenas os campos que podem ser editados e que corrigimos
+                // Filtra apenas os campos que podem ser editados e inclui o ID
                 const dataToSave = {
+                    id: formData.id, // <<<< CORREÇÃO: GARANTE QUE O ID ESTÁ PRESENTE
                     nome_completo: formData.nome_completo,
-                    nome_fantasia: formData.nome_completo, // Salva o nome completo também em fantasia, por segurança
+                    nome_fantasia: formData.nome_completo, 
                     email: formData.email,
                     telefone: formData.telefone,
                     cep: formData.cep,
@@ -59,9 +60,8 @@
                     logradouro: formData.logradouro,
                     numero_endereco: formData.numero_endereco,
                     complemento: formData.complemento,
-                    consumo_kw: Number(formData.consumo_kw), // Garante que é um número
+                    consumo_kw: Number(formData.consumo_kw), 
                     distribuidora_energia: formData.distribuidora_energia,
-                    // Garante que o status também pode ser salvo se for alterado dentro do modal (embora não tenhamos o campo, é uma boa prática)
                     status: formData.status
                 };
                 onSave(dataToSave);
@@ -260,7 +260,7 @@
                 }
             };
 
-            // Funções de Edição (MANTIDAS, mas usando o modal corrigido)
+            // Funções de Edição (MANTIDAS)
             const handleEditClick = (proposta) => {
                 setSelectedProposta(proposta);
             };
@@ -270,7 +270,7 @@
                 console.log('🔄 Iniciando edição de proposta...', dataToSave);
                 
                 try {
-                    // A coluna ID é UUID, mas Supabase aceita o ID direto do registro para o filtro EQ
+                    // O filtro agora usa dataToSave.id (UUID)
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${dataToSave.id}`, {
                         method: 'PATCH',
                         headers: {
@@ -279,7 +279,10 @@
                             'Content-Type': 'application/json',
                             'Prefer': 'return=representation'
                         },
-                        body: JSON.stringify(dataToSave)
+                        // CORREÇÃO: Remove o ID do corpo (body) da requisição, mas o mantém no filtro
+                        body: JSON.stringify(Object.fromEntries(
+                            Object.entries(dataToSave).filter(([key]) => key !== 'id')
+                        ))
                     });
 
                     if (response.ok) {
@@ -522,7 +525,7 @@
                 doc.text(`CPF/CNPJ: ${cpfCnpj}`, 20, 50);
                 doc.text(`E-mail: ${proposta.email}`, 20, 60);
                 doc.text(`Telefone: ${proposta.telefone}`, 20, 70);
-                doc.text(`Endereço: ${proposta.logradouro}, ${proposta.numero_endereco}`, 20, 80); // CORRIGIDO: logradouro e numero_endereco
+                doc.text(`Endereço: ${proposta.logradouro}, ${proposta.numero_endereco}`, 20, 80); 
                 doc.text(`${proposta.cidade} - ${proposta.estado}, CEP: ${proposta.cep}`, 20, 90);
                 
                 doc.text("CONTRATADA: OBY ENERGY", 20, 110);

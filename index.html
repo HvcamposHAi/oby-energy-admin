@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OBY Energy - Painel Administrativo</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script> 
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,11 +24,9 @@
         const ADMIN_USER = 'admin';
         const ADMIN_PASS = 'oby2025';
 
-        // Componente do Modal de Edição (MANTIDO)
+        // Componente do Modal de Edição 
         function EditPropostaModal({ proposta, onClose, onSave, saving }) {
             
-            // Lista de colunas editáveis que existem no banco (baseado no JSON fornecido)
-            // Usamos esta lista para filtrar o que é salvo.
             const editableColumns = [
                 'nome_completo', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
                 'cpf', 'cnpj', 'logradouro', 'numero_endereco', 'complemento', 'consumo_kw', 
@@ -280,7 +278,8 @@
                 
                 // Extrai o ID para usar no filtro e cria o payload excluindo o ID
                 const propostaId = dataToSave.id;
-                const { id, ...payloadForSupabase } = dataToSave; // CORREÇÃO PRINCIPAL: Garante que 'id' não está no payload
+                // Exclui o ID e cria o objeto de payload a ser enviado para o Supabase
+                const { id, ...payloadForSupabase } = dataToSave; 
                 
                 try {
                     // O filtro usa o ID (UUID)
@@ -292,7 +291,7 @@
                             'Content-Type': 'application/json',
                             'Prefer': 'return=representation'
                         },
-                        // CORREÇÃO: Envia o payload que não contém o ID
+                        // Envia o payload que não contém o ID, garantindo a cirurgia no JSON
                         body: JSON.stringify(payloadForSupabase)
                     });
 

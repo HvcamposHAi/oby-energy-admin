@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OBY Energy - Painel Administrativo</title>
-    <script src="https://unpkg.com/react@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -24,9 +24,18 @@
         const ADMIN_USER = 'admin';
         const ADMIN_PASS = 'oby2025';
 
-        // Componente do Modal de Edição (CORRIGIDO PARA O NOVO ERRO)
+        // Componente do Modal de Edição (MANTIDO)
         function EditPropostaModal({ proposta, onClose, onSave, saving }) {
-            // Usa os nomes de colunas CORRETOS do banco de dados para o estado
+            
+            // Lista de colunas editáveis que existem no banco (baseado no JSON fornecido)
+            // Usamos esta lista para filtrar o que é salvo.
+            const editableColumns = [
+                'nome_completo', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
+                'cpf', 'cnpj', 'logradouro', 'numero_endereco', 'complemento', 'consumo_kw', 
+                'distribuidora_energia', 'status', 'tipo_pessoa', 'numero_instalacao', 
+                'tipo_conexao', 'modalidade_tarifaria'
+            ];
+
             const [formData, setFormData] = useState({
                 ...proposta,
                 nome_completo: proposta.nome_completo || proposta.nome_fantasia || '',
@@ -45,25 +54,25 @@
             };
 
             const handleSave = () => {
-                // Filtra apenas os campos que podem ser editados e inclui o ID
-                const dataToSave = {
-                    id: formData.id, // <<<< CORREÇÃO: GARANTE QUE O ID ESTÁ PRESENTE
-                    nome_completo: formData.nome_completo,
-                    nome_fantasia: formData.nome_completo, 
-                    email: formData.email,
-                    telefone: formData.telefone,
-                    cep: formData.cep,
-                    cidade: formData.cidade,
-                    estado: formData.estado,
-                    cpf: formData.cpf,
-                    cnpj: formData.cnpj,
-                    logradouro: formData.logradouro,
-                    numero_endereco: formData.numero_endereco,
-                    complemento: formData.complemento,
-                    consumo_kw: Number(formData.consumo_kw), 
-                    distribuidora_energia: formData.distribuidora_energia,
-                    status: formData.status
-                };
+                // Cria um objeto que contém APENAS os dados editáveis e o ID
+                const dataToSave = { id: formData.id };
+                
+                editableColumns.forEach(column => {
+                    if (formData.hasOwnProperty(column)) {
+                        let value = formData[column];
+                        // Converte consumo_kw para número antes de enviar
+                        if (column === 'consumo_kw') {
+                            value = Number(value);
+                        }
+                        // Garante que o nome_fantasia use o mesmo valor do nome_completo
+                        if (column === 'nome_fantasia') {
+                            dataToSave[column] = formData.nome_completo;
+                        } else {
+                            dataToSave[column] = value;
+                        }
+                    }
+                });
+                
                 onSave(dataToSave);
             };
 
@@ -260,7 +269,7 @@
                 }
             };
 
-            // Funções de Edição (MANTIDAS)
+            // Funções de Edição 
             const handleEditClick = (proposta) => {
                 setSelectedProposta(proposta);
             };
@@ -269,9 +278,13 @@
                 setSavingProposta(true);
                 console.log('🔄 Iniciando edição de proposta...', dataToSave);
                 
+                // Extrai o ID para usar no filtro e cria o payload excluindo o ID
+                const propostaId = dataToSave.id;
+                const { id, ...payloadForSupabase } = dataToSave; // CORREÇÃO PRINCIPAL: Garante que 'id' não está no payload
+                
                 try {
-                    // O filtro agora usa dataToSave.id (UUID)
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${dataToSave.id}`, {
+                    // O filtro usa o ID (UUID)
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
                         method: 'PATCH',
                         headers: {
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
@@ -279,10 +292,8 @@
                             'Content-Type': 'application/json',
                             'Prefer': 'return=representation'
                         },
-                        // CORREÇÃO: Remove o ID do corpo (body) da requisição, mas o mantém no filtro
-                        body: JSON.stringify(Object.fromEntries(
-                            Object.entries(dataToSave).filter(([key]) => key !== 'id')
-                        ))
+                        // CORREÇÃO: Envia o payload que não contém o ID
+                        body: JSON.stringify(payloadForSupabase)
                     });
 
                     if (response.ok) {
@@ -290,7 +301,7 @@
                         console.log('✅ Proposta atualizada com sucesso!', data);
                         // Atualiza a proposta na lista
                         setPropostas(prev => prev.map(p => 
-                            p.id === dataToSave.id ? {...data[0], showMenu: false, updating: false} : p
+                            p.id === propostaId ? {...data[0], showMenu: false, updating: false} : p
                         ));
                         setSelectedProposta(null); // Fecha o modal
                         alert('✅ Proposta atualizada com sucesso!');

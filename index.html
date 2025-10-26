@@ -114,76 +114,57 @@
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nome</th>
                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nº Contrato</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cidade</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Telefone</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">CPF</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Data</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Ações</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cliente / Vendedor</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Consumo (kWh)</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Custo Atual</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Custo OBY</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Desconto (%)</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Economia Mensal</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {propostasFiltradas.length === 0 ? (
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {propostasAprovadas.length === 0 ? (
                                     <tr>
-                                        <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
-                                            {loading ? 'Carregando...' : 'Nenhuma proposta encontrada'}
+                                        <td colSpan="7" className="px-4 py-4 text-center text-gray-500">
+                                            Nenhuma proposta aprovada com economia calculada para o relatório.
                                         </td>
                                     </tr>
                                 ) : (
-                                    propostasFiltradas.map((proposta) => (
-                                        <tr key={proposta.id} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                                                {proposta.nome_completo || proposta.nome_fantasia || 'Sem nome'}
+                                    propostasAprovadas.map(p => (
+                                        <tr key={p.id}>
+                                            <td className="px-4 py-3 text-sm font-medium text-blue-600">{p.numero_contrato || '-'}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-900">
+                                                {p.nome_completo || p.nome_fantasia || 'Sem nome'}
+                                                <div className="text-xs text-gray-500">Vendedor: {p.vendedor || 'N/A'}</div>
                                             </td>
-                                            <td className="px-4 py-3 text-sm font-semibold text-blue-600">
-                                                {proposta.numero_contrato || '-'}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.email}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.cidade}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.telefone}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">{formatarData(proposta.created_at)}</td>
-                                            <td className="px-4 py-3">
-                                                {/* Simplificado: Apenas o Badge do Status (Botão de status movido para o Modal) */}
-                                                {getStatusBadge(proposta.status || 'pendente')}
-                                            </td>
-                                            <td className="px-4 py-3 flex gap-2">
-                                                <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
-                                                    📝 Editar
-                                                </button>
-                                                <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
-                                                    📄 PDF
-                                                </button>
-                                            </td>
+                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.consumo_kw || 0} kWh</td>
+                                            <td className="px-4 py-3 text-sm text-right text-red-600 font-semibold">{formatarMoeda(p.simulacao_conta_atual)}</td>
+                                            <td className="px-4 py-3 text-sm text-right text-green-600 font-semibold">{formatarMoeda(p.simulacao_conta_nova)}</td>
+                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.desconto_aplicado || 0}%</td>
+                                            <td className="px-4 py-3 text-sm text-right font-bold text-green-800">{formatarMoeda(p.simulacao_economia_mensal)}</td>
                                         </tr>
                                     ))
                                 )}
                             </tbody>
                         </table>
-                    </div>
-                                            </td>
-                                            <td className="px-4 py-3 flex gap-2">
-                                                <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
-                                                    📝 Editar
-                                                </button>
-                                                <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
-                                                    📄 PDF
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
+                        </div>
+                                                            </td>
+                                                            <td className="px-4 py-3 flex gap-2">
+                                                                <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                                                                    📝 Editar
+                                                                </button>
+                                                                <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                                                    📄 PDF
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
                                                 )}
                                             </tbody>
                                         </table>
                                     </div>
-                                    </>) : (
-                                        <FinancialReport propostas={propostas} />
-                                    )
-                                }
-                            </div>
+                                </div>
                             </>
                         )}
                     </div>

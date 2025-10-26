@@ -589,6 +589,7 @@
             };
 
             const atualizarStatus = async (propostaId, novoStatus) => {
+                console.log('🔄 Atualizando status...', {propostaId, novoStatus});
                 try {
                     setPropostas(prev => prev.map(p => 
                         p.id === propostaId ? {...p, updating: true, showMenu: false} : {...p, showMenu: false}
@@ -600,19 +601,24 @@
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
                             'apikey': SUPABASE_KEY,
                             'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
                         },
                         body: JSON.stringify({
                             status: novoStatus 
                         })
                     });
 
+                    console.log('📥 Resposta:', response.status);
+
                     if (response.ok) {
                         const data = await response.json();
+                        console.log('✅ Dados retornados:', data);
                         setPropostas(prev => prev.map(p => 
                             p.id === propostaId ? {...data[0], showMenu: false, updating: false} : p
                         ));
                     } else {
                         const errorText = await response.text();
+                        console.error('❌ Erro:', errorText);
                         throw new Error(errorText);
                     }
                 } catch (error) {

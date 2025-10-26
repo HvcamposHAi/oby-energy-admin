@@ -400,7 +400,14 @@
                 
                 doc.setFont("helvetica");
                 
+                // Número do Contrato
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Contrato Nº: ${proposta.numero_contrato || 'N/A'}`, 20, 15);
+                
                 // Título
+                doc.setTextColor(0, 0, 0);
                 doc.setFontSize(18);
                 doc.setFont("helvetica", "bold");
                 doc.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", 105, 20, { align: "center" });
@@ -685,6 +692,7 @@
                                             <thead className="bg-gray-50 border-b-2 border-gray-200">
                                                 <tr>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nome</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nº Contrato</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cidade</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Telefone</th>
@@ -697,7 +705,7 @@
                                             <tbody className="divide-y divide-gray-200">
                                                 {propostasFiltradas.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan="8" className="px-4 py-8 text-center text-gray-500">
+                                                        <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
                                                             {loading ? 'Carregando...' : 'Nenhuma proposta encontrada'}
                                                         </td>
                                                     </tr>
@@ -706,6 +714,9 @@
                                                         <tr key={proposta.id} className="hover:bg-gray-50">
                                                             <td className="px-4 py-3 text-sm font-medium text-gray-900">
                                                                 {proposta.nome_completo || proposta.nome_fantasia || 'Sem nome'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm font-semibold text-blue-600">
+                                                                {proposta.numero_contrato || '-'}
                                                             </td>
                                                             <td className="px-4 py-3 text-sm text-gray-600">{proposta.email}</td>
                                                             <td className="px-4 py-3 text-sm text-gray-600">{proposta.cidade}</td>

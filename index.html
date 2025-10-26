@@ -380,9 +380,7 @@
                 doc.setFontSize(11);
                 doc.setFont("helvetica", "normal");
                 
-                const nomeCompleto = proposta.tipo_pessoa === 'fisica' 
-                    ? `${proposta.nome} ${proposta.sobrenome}`
-                    : proposta.nome_fantasia;
+                const nomeCompleto = proposta.nome_completo || proposta.nome_fantasia || 'Sem nome';
                 
                 const cpfCnpj = proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj;
                 
@@ -417,8 +415,8 @@
             const propostasFiltradas = propostas.filter(proposta => {
                 const matchFiltro = filtro === 'todos' || proposta.status === filtro;
                 const matchBusca = busca === '' || 
-                    proposta.nome?.toLowerCase().includes(busca.toLowerCase()) ||
-                    proposta.sobrenome?.toLowerCase().includes(busca.toLowerCase()) ||
+                    proposta.nome_completo?.toLowerCase().includes(busca.toLowerCase()) ||
+                    proposta.nome_fantasia?.toLowerCase().includes(busca.toLowerCase()) ||
                     proposta.email?.toLowerCase().includes(busca.toLowerCase()) ||
                     proposta.cidade?.toLowerCase().includes(busca.toLowerCase());
                 return matchFiltro && matchBusca;
@@ -651,9 +649,7 @@
                                                     propostasFiltradas.map((proposta) => (
                                                         <tr key={proposta.id} className="hover:bg-gray-50">
                                                             <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                                                                {proposta.tipo_pessoa === 'fisica' 
-                                                                    ? `${proposta.nome} ${proposta.sobrenome}`
-                                                                    : proposta.nome_fantasia}
+                                                                {proposta.nome_completo || proposta.nome_fantasia || 'Sem nome'}
                                                             </td>
                                                             <td className="px-4 py-3 text-sm text-gray-600">{proposta.email}</td>
                                                             <td className="px-4 py-3 text-sm text-gray-600">{proposta.cidade}</td>

@@ -102,45 +102,6 @@
                 }
             };
 
-            const atualizarStatus = async (propostaId, novoStatus) => {
-                try {
-                    setPropostas(prev => prev.map(p => 
-                        p.id === propostaId ? {...p, updating: true} : p
-                    ));
-
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'apikey': SUPABASE_KEY,
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
-                        },
-                        body: JSON.stringify({ status: novoStatus })
-                    });
-
-                    if (response.ok) {
-                        setPropostas(prev => prev.map(p => 
-                            p.id === propostaId ? {...p, status: novoStatus, updating: false, showMenu: false} : p
-                        ));
-                    } else {
-                        throw new Error('Erro ao atualizar status');
-                    }
-                } catch (error) {
-                    console.error('Erro ao atualizar status:', error);
-                    alert('Erro ao atualizar status');
-                    setPropostas(prev => prev.map(p => 
-                        p.id === propostaId ? {...p, updating: false} : p
-                    ));
-                }
-            };
-
-            const toggleMenu = (propostaId) => {
-                setPropostas(prev => prev.map(p => 
-                    p.id === propostaId ? {...p, showMenu: !p.showMenu} : {...p, showMenu: false}
-                ));
-            };
-
             const carregarConfiguracoes = async () => {
                 try {
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?select=*`, {
@@ -284,6 +245,46 @@
                 } finally {
                     setSavingConfig(false);
                 }
+            };
+
+            const atualizarStatus = async (propostaId, novoStatus) => {
+                try {
+                    setPropostas(prev => prev.map(p => 
+                        p.id === propostaId ? {...p, updating: true, showMenu: false} : {...p, showMenu: false}
+                    ));
+
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify({ status: novoStatus })
+                    });
+
+                    if (response.ok) {
+                        setPropostas(prev => prev.map(p => 
+                            p.id === propostaId ? {...p, status: novoStatus, updating: false} : p
+                        ));
+                        setTimeout(() => carregarPropostas(), 500);
+                    } else {
+                        throw new Error('Erro ao atualizar');
+                    }
+                } catch (error) {
+                    console.error('Erro ao atualizar status:', error);
+                    alert('❌ Erro ao atualizar status: ' + error.message);
+                    setPropostas(prev => prev.map(p => 
+                        p.id === propostaId ? {...p, updating: false, showMenu: false} : p
+                    ));
+                }
+            };
+
+            const toggleStatusMenu = (propostaId) => {
+                setPropostas(prev => prev.map(p => 
+                    p.id === propostaId ? {...p, showMenu: !p.showMenu} : {...p, showMenu: false}
+                ));
             };
 
             // ATUALIZADO: Gerar PDF com templates do banco
@@ -593,7 +594,7 @@
                                                             <td className="px-4 py-3">
                                                                 <div className="relative">
                                                                     <button 
-                                                                        onClick={() => toggleMenu(proposta.id)} 
+                                                                        onClick={() => toggleStatusMenu(proposta.id)} 
                                                                         disabled={proposta.updating}
                                                                         className="flex items-center gap-2 hover:opacity-80 disabled:opacity-50"
                                                                     >

@@ -319,11 +319,17 @@
             };
 
             const atualizarStatus = async (propostaId, novoStatus) => {
+                console.log('🔄 Iniciando atualização de status...');
+                console.log('ID:', propostaId);
+                console.log('Novo status:', novoStatus);
+                
                 try {
                     setPropostas(prev => prev.map(p => 
                         p.id === propostaId ? {...p, updating: true, showMenu: false} : {...p, showMenu: false}
                     ));
 
+                    console.log('📡 Fazendo requisição para:', `${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`);
+                    
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
                         method: 'PATCH',
                         headers: {
@@ -337,15 +343,23 @@
                         })
                     });
 
+                    console.log('📥 Resposta recebida. Status:', response.status);
+
                     if (response.ok) {
                         const data = await response.json();
+                        console.log('✅ Dados retornados:', data);
                         setPropostas(prev => prev.map(p => 
                             p.id === propostaId ? {...data[0], showMenu: false, updating: false} : p
                         ));
+                        console.log('✅ Status atualizado com sucesso!');
+                    } else {
+                        const errorText = await response.text();
+                        console.error('❌ Erro na resposta:', errorText);
+                        throw new Error(errorText);
                     }
                 } catch (error) {
-                    console.error('Erro ao atualizar status:', error);
-                    alert('Erro ao atualizar status. Tente novamente.');
+                    console.error('❌ Erro ao atualizar status:', error);
+                    alert('Erro ao atualizar status: ' + error.message);
                     setPropostas(prev => prev.map(p => 
                         p.id === propostaId ? {...p, updating: false} : p
                     ));

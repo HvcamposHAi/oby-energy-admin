@@ -24,15 +24,145 @@
         const ADMIN_USER = 'admin';
         const ADMIN_PASS = 'oby2025';
 
-        // Componente do Modal de Edição (COM CAMPO VENDEDOR INSERIDO)
+        // --- NOVO COMPONENTE: RELATÓRIO FINANCEIRO ---
+        function FinancialReport({ propostas }) {
+            
+            // Filtra apenas propostas 'aprovado' para o relatório de sucesso
+            const propostasAprovadas = propostas.filter(p => p.status === 'aprovado' && p.simulacao_economia_mensal > 0);
+
+            const formatarMoeda = (valor) => {
+                // Converte para float antes de formatar
+                const num = parseFloat(valor); 
+                if (isNaN(num)) return 'R$ 0,00';
+                return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            };
+
+            const exportarParaCSV = () => {
+                const cabecalho = [
+                    "Nº Contrato", "Vendedor", "Cliente", "Email", "Cidade", 
+                    "Consumo (kWh)", "Custo Atual (R$)", "Custo OBY (R$)", 
+                    "Desconto Aplicado (%)", "Economia Mensal (R$)", "Status"
+                ];
+
+                const linhas = propostasAprovadas.map(p => {
+                    return [
+                        `"${p.numero_contrato || 'N/A'}"`,
+                        `"${p.vendedor || 'Sem Vendedor'}"`,
+                        `"${p.nome_completo || p.nome_fantasia || 'Sem nome'}"`,
+                        `"${p.email || ''}"`,
+                        `"${p.cidade || ''}"`,
+                        `"${p.consumo_kw || 0}"`,
+                        `"${formatarMoeda(p.simulacao_conta_atual).replace('R$', '').trim()}"`,
+                        `"${formatarMoeda(p.simulacao_conta_nova).replace('R$', '').trim()}"`,
+                        `"${p.desconto_aplicado || 0}"`,
+                        `"${formatarMoeda(p.simulacao_economia_mensal).replace('R$', '').trim()}"`,
+                        `"${p.status}"`
+                    ].join(';');
+                });
+
+                const csvContent = [cabecalho.join(';'), ...linhas].join('\n');
+                
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                
+                link.setAttribute("href", url);
+                link.setAttribute("download", `relatorio_oby_financeiro_${new Date().toISOString().slice(0,10)}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                alert("Exportação iniciada! Verifique seus downloads.");
+            };
+
+            const totalEconomiaMensal = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_economia_mensal) || 0), 0);
+            const totalCustoAtual = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_conta_atual) || 0), 0);
+            const totalCustoNovo = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_conta_nova) || 0), 0);
+
+            return (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <div className="flex justify-between items-center mb-6 border-b pb-4">
+                        <h2 className="text-2xl font-bold text-gray-800">📊 Relatório Financeiro de Propostas Aprovadas</h2>
+                        <button 
+                            onClick={exportarParaCSV} 
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50"
+                            disabled={propostasAprovadas.length === 0}
+                        >
+                            ⬇️ Exportar para CSV
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Propostas Válidas</p>
+                            <p className="text-2xl font-bold text-blue-800">{propostasAprovadas.length}</p>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Total Economia Mensal</p>
+                            <p className="text-xl font-bold text-green-800">{formatarMoeda(totalEconomiaMensal)}</p>
+                        </div>
+                        <div className="bg-yellow-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Soma Custo Atual</p>
+                            <p className="text-xl font-bold text-yellow-800">{formatarMoeda(totalCustoAtual)}</p>
+                        </div>
+                        <div className="bg-red-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Soma Custo OBY</p>
+                            <p className="text-xl font-bold text-red-800">{formatarMoeda(totalCustoNovo)}</p>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nº Contrato</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cliente / Vendedor</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Consumo (kWh)</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Custo Atual</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Custo OBY</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Desconto (%)</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Economia Mensal</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {propostasAprovadas.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" className="px-4 py-4 text-center text-gray-500">
+                                            Nenhuma proposta aprovada com economia calculada para o relatório.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    propostasAprovadas.map(p => (
+                                        <tr key={p.id}>
+                                            <td className="px-4 py-3 text-sm font-medium text-blue-600">{p.numero_contrato || '-'}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-900">
+                                                {p.nome_completo || p.nome_fantasia || 'Sem nome'}
+                                                <div className="text-xs text-gray-500">Vendedor: {p.vendedor || 'N/A'}</div>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.consumo_kw || 0} kWh</td>
+                                            <td className="px-4 py-3 text-sm text-right text-red-600 font-semibold">{formatarMoeda(p.simulacao_conta_atual)}</td>
+                                            <td className="px-4 py-3 text-sm text-right text-green-600 font-semibold">{formatarMoeda(p.simulacao_conta_nova)}</td>
+                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.desconto_aplicado || 0}%</td>
+                                            <td className="px-4 py-3 text-sm text-right font-bold text-green-800">{formatarMoeda(p.simulacao_economia_mensal)}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- COMPONENTE DO MODAL (MANTIDO) ---
         function EditPropostaModal({ proposta, onClose, onSave, saving }) {
             
-            // Lista de colunas editáveis que existem no banco (vendedor incluído)
             const editableColumns = [
                 'nome_completo', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
                 'cpf', 'cnpj', 'logradouro', 'numero_endereco', 'complemento', 'consumo_kw', 
                 'distribuidora_energia', 'status', 'tipo_pessoa', 'numero_instalacao', 
-                'tipo_conexao', 'modalidade_tarifaria', 'vendedor' // << NOVO CAMPO
+                'tipo_conexao', 'modalidade_tarifaria', 'vendedor' 
             ];
 
             const [formData, setFormData] = useState({
@@ -45,7 +175,7 @@
                 complemento: proposta.complemento || '',
                 consumo_kw: proposta.consumo_kw || 0,
                 distribuidora_energia: proposta.distribuidora_energia || '',
-                vendedor: proposta.vendedor || '' // << NOVO CAMPO
+                vendedor: proposta.vendedor || '' // << CAMPO VENDEDOR INSERIDO
             });
 
             const handleChange = (e) => {
@@ -54,17 +184,14 @@
             };
 
             const handleSave = () => {
-                // Cria um objeto que contém APENAS os dados editáveis e o ID
                 const dataToSave = { id: formData.id };
                 
                 editableColumns.forEach(column => {
                     if (formData.hasOwnProperty(column)) {
                         let value = formData[column];
-                        // Converte consumo_kw para número antes de enviar
                         if (column === 'consumo_kw') {
                             value = Number(value);
                         }
-                        // Garante que o nome_fantasia use o mesmo valor do nome_completo
                         if (column === 'nome_fantasia') {
                             dataToSave[column] = formData.nome_completo;
                         } else {
@@ -191,6 +318,7 @@
             );
         }
 
+        // --- COMPONENTE PRINCIPAL: ADMIN PANEL ---
         function AdminPanel() {
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [username, setUsername] = useState('');
@@ -423,8 +551,6 @@
                             headers: {
                                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                                 'apikey': SUPABASE_KEY,
-                                'Content-Type': 'application/json',
-                                'Prefer': 'return=representation'
                             },
                             body: JSON.stringify({
                                 valor: String(descontoPercentual)
@@ -436,8 +562,6 @@
                             headers: {
                                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                                 'apikey': SUPABASE_KEY,
-                                'Content-Type': 'application/json',
-                                'Prefer': 'return=representation'
                             },
                             body: JSON.stringify({
                                 chave: 'desconto_percentual',
@@ -476,7 +600,6 @@
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
                             'apikey': SUPABASE_KEY,
                             'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
                         },
                         body: JSON.stringify({
                             status: novoStatus 
@@ -640,6 +763,10 @@
                                 <button onClick={() => { setActiveTab('contrato'); carregarTemplates(); }} className={`px-6 py-3 font-semibold transition ${activeTab === 'contrato' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
                                     📄 Editor de Contrato
                                 </button>
+                                {/* NOVO BOTÃO: RELATÓRIO FINANCEIRO */}
+                                <button onClick={() => setActiveTab('financeiro')} className={`px-6 py-3 font-semibold transition ${activeTab === 'financeiro' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
+                                    📊 Relatório Financeiro
+                                </button>
                             </div>
                         </div>
 
@@ -772,6 +899,8 @@
                                     </div>
                                 )}
                             </div>
+                        ) : activeTab === 'financeiro' ? (
+                            <FinancialReport propostas={propostas} />
                         ) : (
                             <>
                                 <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg p-6 text-white mb-6">

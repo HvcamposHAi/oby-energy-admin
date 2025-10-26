@@ -24,7 +24,7 @@
         const ADMIN_USER = 'admin';
         const ADMIN_PASS = 'oby2025';
 
-        // --- COMPONENTE: RELATÓRIO FINANCEIRO ---
+        // --- COMPONENTE: RELATÓRIO FINANCEIRO (MANTIDO) ---
         function FinancialReport({ propostas }) {
             
             const propostasAprovadas = propostas.filter(p => p.status === 'aprovado' && p.simulacao_economia_mensal > 0);
@@ -147,51 +147,8 @@
                                             <td className="px-4 py-3 text-sm text-gray-600">{proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj}</td>
                                             <td className="px-4 py-3 text-sm text-gray-600">{formatarData(proposta.created_at)}</td>
                                             <td className="px-4 py-3">
-                                                <div className="relative">
-                                                    <button 
-                                                        onClick={() => toggleStatusMenu(proposta.id)} 
-                                                        disabled={proposta.updating}
-                                                        className="flex items-center gap-2 hover:opacity-80 disabled:opacity-50"
-                                                    >
-                                                        {getStatusBadge(proposta.status || 'pendente')}
-                                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                                        </svg>
-                                                    </button>
-                                                    
-                                                    {proposta.showMenu && (
-                                                        <div className="absolute z-10 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 right-0">
-                                                            <button 
-                                                                onClick={() => atualizarStatus(proposta.id, 'pendente')}
-                                                                className="w-full text-left px-4 py-2 text-sm hover:bg-yellow-50 text-yellow-800 flex items-center gap-2"
-                                                            >
-                                                                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                                                                Pendente
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => atualizarStatus(proposta.id, 'aprovado')}
-                                                                className="w-full text-left px-4 py-2 text-sm hover:bg-green-50 text-green-800 flex items-center gap-2"
-                                                            >
-                                                                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                                                                Aprovado
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => atualizarStatus(proposta.id, 'reprovado')}
-                                                                className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-800 flex items-center gap-2"
-                                                            >
-                                                                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                                                                Reprovado
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => atualizarStatus(proposta.id, 'lista_espera')}
-                                                                className="w-full text-left px-4 py-2 text-sm hover:bg-orange-50 text-orange-800 flex items-center gap-2"
-                                                            >
-                                                                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                                                                Lista de Espera
-                                                            </button>
-                                                        </div>
-                                                    ) }
-                                                </div>
+                                                {/* Simplificado: Apenas o Badge do Status (Botão de status movido para o Modal) */}
+                                                {getStatusBadge(proposta.status || 'pendente')}
                                             </td>
                                             <td className="px-4 py-3 flex gap-2">
                                                 <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
@@ -203,9 +160,29 @@
                                             </td>
                                         </tr>
                                     ))
-                                ) }
-                                </tbody>
-                            </table>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                                            </td>
+                                            <td className="px-4 py-3 flex gap-2">
+                                                <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                                                    📝 Editar
+                                                </button>
+                                                <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                                    📄 PDF
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    </>) : (
+                                        <FinancialReport propostas={propostas} />
+                                    )
+                                }
                             </div>
                             </>
                         )}

@@ -217,8 +217,7 @@
                                 'Prefer': 'return=representation'
                             },
                             body: JSON.stringify({
-                                valor: String(descontoPercentual),
-                                updated_at: new Date().toISOString()
+                                valor: String(descontoPercentual)
                             })
                         });
                         
@@ -243,9 +242,7 @@
                             body: JSON.stringify({
                                 chave: 'desconto_percentual',
                                 valor: String(descontoPercentual),
-                                descricao: 'Percentual de desconto aplicado na proposta',
-                                created_at: new Date().toISOString(),
-                                updated_at: new Date().toISOString()
+                                descricao: 'Percentual de desconto aplicado na proposta'
                             })
                         });
                         
@@ -271,8 +268,7 @@
                                 'Prefer': 'return=representation'
                             },
                             body: JSON.stringify({
-                                valor: tarifaKwh,
-                                updated_at: new Date().toISOString()
+                                valor: tarifaKwh
                             })
                         });
                     }
@@ -287,8 +283,7 @@
                                 'Prefer': 'return=representation'
                             },
                             body: JSON.stringify({
-                                valor: proporcaoEnergia,
-                                updated_at: new Date().toISOString()
+                                valor: proporcaoEnergia
                             })
                         });
                     }
@@ -303,8 +298,7 @@
                                 'Prefer': 'return=representation'
                             },
                             body: JSON.stringify({
-                                valor: proporcaoImpostos,
-                                updated_at: new Date().toISOString()
+                                valor: proporcaoImpostos
                             })
                         });
                     }

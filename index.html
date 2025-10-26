@@ -24,14 +24,15 @@
         const ADMIN_USER = 'admin';
         const ADMIN_PASS = 'oby2025';
 
-        // Componente do Modal de Edição 
+        // Componente do Modal de Edição (COM CAMPO VENDEDOR)
         function EditPropostaModal({ proposta, onClose, onSave, saving }) {
             
+            // Lista de colunas editáveis que existem no banco (vendedor adicionado)
             const editableColumns = [
                 'nome_completo', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
                 'cpf', 'cnpj', 'logradouro', 'numero_endereco', 'complemento', 'consumo_kw', 
                 'distribuidora_energia', 'status', 'tipo_pessoa', 'numero_instalacao', 
-                'tipo_conexao', 'modalidade_tarifaria'
+                'tipo_conexao', 'modalidade_tarifaria', 'vendedor' // << NOVO CAMPO
             ];
 
             const [formData, setFormData] = useState({
@@ -43,7 +44,8 @@
                 numero_endereco: proposta.numero_endereco || '',
                 complemento: proposta.complemento || '',
                 consumo_kw: proposta.consumo_kw || 0,
-                distribuidora_energia: proposta.distribuidora_energia || ''
+                distribuidora_energia: proposta.distribuidora_energia || '',
+                vendedor: proposta.vendedor || '' // << NOVO CAMPO
             });
 
             const handleChange = (e) => {
@@ -97,7 +99,7 @@
                                 </div>
                             </div>
 
-                            {/* Dados Pessoais */}
+                            {/* Dados Pessoais (COM CAMPO VENDEDOR) */}
                             <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
                                 <h3 className="font-bold text-lg mb-4 text-blue-800">Dados Pessoais</h3>
                                 <div className="space-y-4">
@@ -123,10 +125,15 @@
                                             className={inputClass} 
                                         />
                                     </div>
+                                    {/* NOVO CAMPO VENDEDOR */}
+                                    <div>
+                                        <label className={labelClass}>Vendedor</label>
+                                        <input type="text" name="vendedor" value={formData.vendedor || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Dados de Endereço e Instalação (CORRIGIDO) */}
+                            {/* Dados de Endereço e Instalação (MANTIDOS CORRIGIDOS) */}
                             <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
                                 <h3 className="font-bold text-lg mb-4 text-green-800">Endereço e Instalação</h3>
                                 <div className="space-y-4">

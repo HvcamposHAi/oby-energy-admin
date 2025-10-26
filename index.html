@@ -24,9 +24,20 @@
         const ADMIN_USER = 'admin';
         const ADMIN_PASS = 'oby2025';
 
-        // Componente do Modal de Edição (NOVO)
+        // Componente do Modal de Edição (CORRIGIDO)
         function EditPropostaModal({ proposta, onClose, onSave, saving }) {
-            const [formData, setFormData] = useState(proposta);
+            // Usa os nomes de colunas CORRETOS do banco de dados para o estado
+            const [formData, setFormData] = useState({
+                ...proposta,
+                nome_completo: proposta.nome_completo || proposta.nome_fantasia || '',
+                cpf: proposta.cpf || '',
+                cnpj: proposta.cnpj || '',
+                logradouro: proposta.logradouro || '',
+                numero_endereco: proposta.numero_endereco || '',
+                complemento: proposta.complemento || '',
+                consumo_kw: proposta.consumo_kw || 0,
+                distribuidora_energia: proposta.distribuidora_energia || ''
+            });
 
             const handleChange = (e) => {
                 const { name, value } = e.target;
@@ -34,8 +45,25 @@
             };
 
             const handleSave = () => {
-                // Remove o campo numero_contrato da edição (garantido)
-                const { numero_contrato, ...dataToSave } = formData; 
+                // Filtra apenas os campos que podem ser editados e que corrigimos
+                const dataToSave = {
+                    nome_completo: formData.nome_completo,
+                    nome_fantasia: formData.nome_completo, // Salva o nome completo também em fantasia, por segurança
+                    email: formData.email,
+                    telefone: formData.telefone,
+                    cep: formData.cep,
+                    cidade: formData.cidade,
+                    estado: formData.estado,
+                    cpf: formData.cpf,
+                    cnpj: formData.cnpj,
+                    logradouro: formData.logradouro,
+                    numero_endereco: formData.numero_endereco,
+                    complemento: formData.complemento,
+                    consumo_kw: Number(formData.consumo_kw), // Garante que é um número
+                    distribuidora_energia: formData.distribuidora_energia,
+                    // Garante que o status também pode ser salvo se for alterado dentro do modal (embora não tenhamos o campo, é uma boa prática)
+                    status: formData.status
+                };
                 onSave(dataToSave);
             };
 
@@ -57,7 +85,7 @@
                                 <div className="space-y-3">
                                     <div>
                                         <label className={labelClass}>Número do Contrato</label>
-                                        <input type="text" value={formData.numero_contrato || 'N/A'} disabled className={`${inputClass} bg-gray-200 cursor-not-allowed text-gray-700 font-semibold`} />
+                                        <input type="text" value={proposta.numero_contrato || 'N/A'} disabled className={`${inputClass} bg-gray-200 cursor-not-allowed text-gray-700 font-semibold`} />
                                     </div>
                                 </div>
                             </div>
@@ -68,7 +96,7 @@
                                 <div className="space-y-4">
                                     <div>
                                         <label className={labelClass}>Nome Completo / Fantasia</label>
-                                        <input type="text" name="nome_completo" value={formData.nome_completo || formData.nome_fantasia || ''} onChange={handleChange} className={inputClass} />
+                                        <input type="text" name="nome_completo" value={formData.nome_completo} onChange={handleChange} className={inputClass} />
                                     </div>
                                     <div>
                                         <label className={labelClass}>Email</label>
@@ -91,7 +119,7 @@
                                 </div>
                             </div>
 
-                            {/* Dados de Endereço e Instalação */}
+                            {/* Dados de Endereço e Instalação (CORRIGIDO) */}
                             <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
                                 <h3 className="font-bold text-lg mb-4 text-green-800">Endereço e Instalação</h3>
                                 <div className="space-y-4">
@@ -100,8 +128,18 @@
                                         <input type="text" name="cep" value={formData.cep || ''} onChange={handleChange} className={inputClass} />
                                     </div>
                                     <div>
-                                        <label className={labelClass}>Endereço</label>
-                                        <input type="text" name="endereco" value={formData.endereco || ''} onChange={handleChange} className={inputClass} />
+                                        <label className={labelClass}>Logradouro</label>
+                                        <input type="text" name="logradouro" value={formData.logradouro || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={labelClass}>Número</label>
+                                            <input type="text" name="numero_endereco" value={formData.numero_endereco || ''} onChange={handleChange} className={inputClass} />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>Complemento</label>
+                                            <input type="text" name="complemento" value={formData.complemento || ''} onChange={handleChange} className={inputClass} />
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -115,11 +153,11 @@
                                     </div>
                                     <div>
                                         <label className={labelClass}>Distribuidora</label>
-                                        <input type="text" name="distribuidora" value={formData.distribuidora || ''} onChange={handleChange} className={inputClass} />
+                                        <input type="text" name="distribuidora_energia" value={formData.distribuidora_energia || ''} onChange={handleChange} className={inputClass} />
                                     </div>
                                     <div>
                                         <label className={labelClass}>Consumo Médio (kWh)</label>
-                                        <input type="number" step="1" name="consumo_mensal" value={formData.consumo_mensal || 0} onChange={handleChange} className={inputClass} />
+                                        <input type="number" step="1" name="consumo_kw" value={formData.consumo_kw || 0} onChange={handleChange} className={inputClass} />
                                     </div>
                                 </div>
                             </div>
@@ -145,8 +183,8 @@
             const [password, setPassword] = useState('');
             const [propostas, setPropostas] = useState([]);
             const [loading, setLoading] = useState(false);
-            const [selectedProposta, setSelectedProposta] = useState(null); // Estado para a proposta em edição
-            const [savingProposta, setSavingProposta] = useState(false); // Estado para o salvamento
+            const [selectedProposta, setSelectedProposta] = useState(null); 
+            const [savingProposta, setSavingProposta] = useState(false); 
             const [filtro, setFiltro] = useState('todos');
             const [busca, setBusca] = useState('');
             const [activeTab, setActiveTab] = useState('propostas');
@@ -222,7 +260,7 @@
                 }
             };
 
-            // Funções de Edição (NOVO)
+            // Funções de Edição (MANTIDAS, mas usando o modal corrigido)
             const handleEditClick = (proposta) => {
                 setSelectedProposta(proposta);
             };
@@ -232,6 +270,7 @@
                 console.log('🔄 Iniciando edição de proposta...', dataToSave);
                 
                 try {
+                    // A coluna ID é UUID, mas Supabase aceita o ID direto do registro para o filtro EQ
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${dataToSave.id}`, {
                         method: 'PATCH',
                         headers: {
@@ -420,7 +459,7 @@
                             'Prefer': 'return=representation'
                         },
                         body: JSON.stringify({
-                            status: novoStatus // Corrigido para remover updated_at
+                            status: novoStatus 
                         })
                     });
 
@@ -483,7 +522,7 @@
                 doc.text(`CPF/CNPJ: ${cpfCnpj}`, 20, 50);
                 doc.text(`E-mail: ${proposta.email}`, 20, 60);
                 doc.text(`Telefone: ${proposta.telefone}`, 20, 70);
-                doc.text(`Endereço: ${proposta.endereco}, ${proposta.numero}`, 20, 80);
+                doc.text(`Endereço: ${proposta.logradouro}, ${proposta.numero_endereco}`, 20, 80); // CORRIGIDO: logradouro e numero_endereco
                 doc.text(`${proposta.cidade} - ${proposta.estado}, CEP: ${proposta.cep}`, 20, 90);
                 
                 doc.text("CONTRATADA: OBY ENERGY", 20, 110);

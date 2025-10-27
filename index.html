@@ -186,6 +186,14 @@
             const handleSave = () => {
                 const dataToSave = { id: formData.id };
                 
+                // Gerar número do contrato se não existir (últimos 5 caracteres do ID)
+                if (!formData.numero_contrato || formData.numero_contrato === '-') {
+                    const anoAtual = new Date().getFullYear();
+                    const idCurto = String(formData.id).slice(-5); // Pega últimos 5 caracteres
+                    dataToSave.numero_contrato = `OBY-${anoAtual}-${idCurto}`;
+                    console.log('📋 Número de contrato gerado automaticamente:', dataToSave.numero_contrato);
+                }
+                
                 editableColumns.forEach(column => {
                     if (formData.hasOwnProperty(column)) {
                         let value = formData[column];

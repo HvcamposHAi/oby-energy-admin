@@ -1098,7 +1098,7 @@
                                 <div className="p-6 overflow-y-auto">
                                     <div className="space-y-4">
                                         {/* CONTA DE ENERGIA - PRIMEIRO */}
-                                        {propostaAnexos.arquivo_conta_url && (
+                                        {propostaAnexos.arquivo_conta_url ? (
                                             <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
                                                 <div>
                                                     <p className="font-semibold text-blue-800">⚡ Conta de Energia</p>
@@ -1108,10 +1108,18 @@
                                                     👁️ Ver
                                                 </a>
                                             </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">⚡ Conta de Energia</p>
+                                                    <p className="text-sm text-gray-400">Não enviado</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">❌ Faltando</span>
+                                            </div>
                                         )}
                                         
                                         {/* DOCUMENTOS PESSOA FÍSICA */}
-                                        {propostaAnexos.arquivo_rg_frente_url && (
+                                        {propostaAnexos.arquivo_rg_frente_url ? (
                                             <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
                                                 <div>
                                                     <p className="font-semibold text-green-800">🪪 RG/CNH (Frente)</p>
@@ -1121,8 +1129,17 @@
                                                     👁️ Ver
                                                 </a>
                                             </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">🪪 RG/CNH (Frente)</p>
+                                                    <p className="text-sm text-gray-400">Não enviado</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">❌ Faltando</span>
+                                            </div>
                                         )}
-                                        {propostaAnexos.arquivo_rg_verso_url && (
+                                        
+                                        {propostaAnexos.arquivo_rg_verso_url ? (
                                             <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
                                                 <div>
                                                     <p className="font-semibold text-green-800">🪪 RG/CNH (Verso)</p>
@@ -1132,10 +1149,18 @@
                                                     👁️ Ver
                                                 </a>
                                             </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">🪪 RG/CNH (Verso)</p>
+                                                    <p className="text-sm text-gray-400">Não enviado</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">❌ Faltando</span>
+                                            </div>
                                         )}
                                         
                                         {/* DOCUMENTOS REPRESENTANTE LEGAL */}
-                                        {propostaAnexos.arquivo_rg_rep1_frente_url && (
+                                        {propostaAnexos.arquivo_rg_rep1_frente_url ? (
                                             <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
                                                 <div>
                                                     <p className="font-semibold text-purple-800">👔 RG Representante Legal (Frente)</p>
@@ -1145,8 +1170,17 @@
                                                     👁️ Ver
                                                 </a>
                                             </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">👔 RG Representante Legal (Frente)</p>
+                                                    <p className="text-sm text-gray-400">Não enviado (opcional)</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">⚪ Opcional</span>
+                                            </div>
                                         )}
-                                        {propostaAnexos.arquivo_rg_rep1_verso_url && (
+                                        
+                                        {propostaAnexos.arquivo_rg_rep1_verso_url ? (
                                             <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
                                                 <div>
                                                     <p className="font-semibold text-purple-800">👔 RG Representante Legal (Verso)</p>
@@ -1156,10 +1190,18 @@
                                                     👁️ Ver
                                                 </a>
                                             </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">👔 RG Representante Legal (Verso)</p>
+                                                    <p className="text-sm text-gray-400">Não enviado (opcional)</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">⚪ Opcional</span>
+                                            </div>
                                         )}
                                         
                                         {/* CONTRATO SOCIAL */}
-                                        {propostaAnexos.contrato_social_url && (
+                                        {propostaAnexos.contrato_social_url ? (
                                             <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                                                 <div>
                                                     <p className="font-semibold text-yellow-800">📄 Contrato Social</p>
@@ -1169,18 +1211,13 @@
                                                     👁️ Ver
                                                 </a>
                                             </div>
-                                        )}
-                                        
-                                        {/* MENSAGEM QUANDO NÃO HÁ ANEXOS */}
-                                        {!propostaAnexos.arquivo_conta_url && 
-                                         !propostaAnexos.arquivo_rg_frente_url && 
-                                         !propostaAnexos.arquivo_rg_verso_url && 
-                                         !propostaAnexos.arquivo_rg_rep1_frente_url && 
-                                         !propostaAnexos.arquivo_rg_rep1_verso_url && 
-                                         !propostaAnexos.contrato_social_url && (
-                                            <div className="p-8 text-center text-gray-500">
-                                                <p className="text-lg">📂 Nenhum anexo encontrado</p>
-                                                <p className="text-sm mt-2">Esta proposta não possui documentos anexados.</p>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">📄 Contrato Social</p>
+                                                    <p className="text-sm text-gray-400">Não enviado (opcional para PF)</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">⚪ Opcional</span>
                                             </div>
                                         )}
                                     </div>

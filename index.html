@@ -8,6 +8,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -15,203 +16,580 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Configurações do Supabase
+        // Configurações do Supabase (MANTIDAS)
         const SUPABASE_URL = 'https://uuaqmwnfjopgjmjjchmw.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1YXFtd25mam9wZ2ptampjaG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1OTEyNzUsImV4cCI6MjA3NjE2NzI3NX0.9ITSBR9SNoZKgvF1AuW4OsL4b8Du5NAXttQpi7B3MO8';
 
-        // Credenciais de Admin
+        // Credenciais de Admin (MANTIDAS)
         const ADMIN_USER = 'admin';
         const ADMIN_PASS = 'oby2025';
 
+        // --- NOVO COMPONENTE: RELATÓRIO FINANCEIRO ---
+        function FinancialReport({ propostas }) {
+            
+            // Filtra apenas propostas 'aprovado' para o relatório de sucesso
+            const propostasAprovadas = propostas.filter(p => p.status === 'aprovado' && p.simulacao_economia_mensal > 0);
+
+            const formatarMoeda = (valor) => {
+                // Converte para float antes de formatar
+                const num = parseFloat(valor); 
+                if (isNaN(num)) return 'R$ 0,00';
+                return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            };
+
+            const exportarParaCSV = () => {
+                const cabecalho = [
+                    "Nº Contrato", "Vendedor", "Cliente", "Email", "Cidade", 
+                    "Consumo (kWh)", "Custo Atual (R$)", "Custo OBY (R$)", 
+                    "Desconto Aplicado (%)", "Economia Mensal (R$)", "Status"
+                ];
+
+                const linhas = propostasAprovadas.map(p => {
+                    return [
+                        `"${p.numero_contrato || 'N/A'}"`,
+                        `"${p.vendedor || 'Sem Vendedor'}"`,
+                        `"${p.nome_completo || p.nome_fantasia || 'Sem nome'}"`,
+                        `"${p.email || ''}"`,
+                        `"${p.cidade || ''}"`,
+                        `"${p.consumo_kw || 0}"`,
+                        `"${formatarMoeda(p.simulacao_conta_atual).replace('R$', '').trim()}"`,
+                        `"${formatarMoeda(p.simulacao_conta_nova).replace('R$', '').trim()}"`,
+                        `"${p.desconto_aplicado || 0}"`,
+                        `"${formatarMoeda(p.simulacao_economia_mensal).replace('R$', '').trim()}"`,
+                        `"${p.status}"`
+                    ].join(';');
+                });
+
+                const csvContent = [cabecalho.join(';'), ...linhas].join('\n');
+                
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                
+                link.setAttribute("href", url);
+                link.setAttribute("download", `relatorio_oby_financeiro_${new Date().toISOString().slice(0,10)}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                alert("Exportação iniciada! Verifique seus downloads.");
+            };
+
+            const totalEconomiaMensal = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_economia_mensal) || 0), 0);
+            const totalCustoAtual = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_conta_atual) || 0), 0);
+            const totalCustoNovo = propostasAprovadas.reduce((sum, p) => sum + (parseFloat(p.simulacao_conta_nova) || 0), 0);
+
+            return (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <div className="flex justify-between items-center mb-6 border-b pb-4">
+                        <h2 className="text-2xl font-bold text-gray-800">📊 Relatório Financeiro de Propostas Aprovadas</h2>
+                                </button>
+                                <button onClick={() => setActiveTab('vendedores')} className={`px-6 py-3 font-semibold transition ${activeTab === 'vendedores' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
+                                    👥 Vendedores
+                        <button 
+                            onClick={exportarParaCSV} 
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50"
+                            disabled={propostasAprovadas.length === 0}
+                        >
+                            ⬇️ Exportar para CSV
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Propostas Válidas</p>
+                            <p className="text-2xl font-bold text-blue-800">{propostasAprovadas.length}</p>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Total Economia Mensal</p>
+                            <p className="text-xl font-bold text-green-800">{formatarMoeda(totalEconomiaMensal)}</p>
+                        </div>
+                        <div className="bg-yellow-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Soma Custo Atual</p>
+                            <p className="text-xl font-bold text-yellow-800">{formatarMoeda(totalCustoAtual)}</p>
+                        </div>
+                        <div className="bg-red-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600">Soma Custo OBY</p>
+                            <p className="text-xl font-bold text-red-800">{formatarMoeda(totalCustoNovo)}</p>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nº Contrato</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cliente / Vendedor</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Consumo (kWh)</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Custo Atual</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Custo OBY</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Desconto (%)</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Economia Mensal</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {propostasAprovadas.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" className="px-4 py-4 text-center text-gray-500">
+                                            Nenhuma proposta aprovada com economia calculada para o relatório.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    propostasAprovadas.map(p => (
+                                        <tr key={p.id}>
+                                            <td className="px-4 py-3 text-sm font-medium text-blue-600">{p.numero_contrato || '-'}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-900">
+                                                {p.nome_completo || p.nome_fantasia || 'Sem nome'}
+                                                <div className="text-xs text-gray-500">Vendedor: {p.vendedor || 'N/A'}</div>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.consumo_kw || 0} kWh</td>
+                                            <td className="px-4 py-3 text-sm text-right text-red-600 font-semibold">{formatarMoeda(p.simulacao_conta_atual)}</td>
+                                            <td className="px-4 py-3 text-sm text-right text-green-600 font-semibold">{formatarMoeda(p.simulacao_conta_nova)}</td>
+                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.desconto_aplicado || 0}%</td>
+                                            <td className="px-4 py-3 text-sm text-right font-bold text-green-800">{formatarMoeda(p.simulacao_economia_mensal)}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- COMPONENTE DO MODAL (MANTIDO) ---
+        function EditPropostaModal({ proposta, onClose, onSave, saving }) {
+            
+            const editableColumns = [
+                'nome_completo', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
+                'cpf', 'cnpj', 'logradouro', 'numero_endereco', 'complemento', 'consumo_kw', 
+                'distribuidora_energia', 'status', 'tipo_pessoa', 'numero_instalacao', 
+                'tipo_conexao', 'modalidade_tarifaria', 'vendedor' 
+            ];
+
+            const [formData, setFormData] = useState({
+                ...proposta,
+                nome_completo: proposta.nome_completo || proposta.nome_fantasia || '',
+                cpf: proposta.cpf || '',
+                cnpj: proposta.cnpj || '',
+                logradouro: proposta.logradouro || '',
+                numero_endereco: proposta.numero_endereco || '',
+                complemento: proposta.complemento || '',
+                consumo_kw: proposta.consumo_kw || 0,
+                distribuidora_energia: proposta.distribuidora_energia || '',
+                vendedor: proposta.vendedor || '' // << CAMPO VENDEDOR INSERIDO
+            });
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleSave = () => {
+                const dataToSave = { id: formData.id };
+                
+                // Gerar número do contrato se não existir (últimos 5 caracteres do ID)
+                if (!formData.numero_contrato || formData.numero_contrato === '-') {
+                    const anoAtual = new Date().getFullYear();
+                    const idCurto = String(formData.id).slice(-5); // Pega últimos 5 caracteres
+                    dataToSave.numero_contrato = `OBY-${anoAtual}-${idCurto}`;
+                    console.log('📋 Número de contrato gerado automaticamente:', dataToSave.numero_contrato);
+                }
+                
+                editableColumns.forEach(column => {
+                    if (formData.hasOwnProperty(column)) {
+                        let value = formData[column];
+                        if (column === 'consumo_kw') {
+                            value = Number(value);
+                        }
+                        if (column === 'nome_fantasia') {
+                            dataToSave[column] = formData.nome_completo;
+                        } else {
+                            dataToSave[column] = value;
+                        }
+                    }
+                });
+                
+                onSave(dataToSave);
+            };
+
+            const inputClass = "w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150";
+            const labelClass = "block text-sm font-medium text-gray-700 mb-1";
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+                        <div className="p-6 border-b border-gray-200">
+                            <h2 className="text-2xl font-bold text-gray-800">📝 Editar Proposta: {proposta.numero_contrato || 'N/A'}</h2>
+                            <p className="text-sm text-gray-500">Altere os dados da proposta do cliente. O Número do Contrato não pode ser editado.</p>
+                        </div>
+
+                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
+                            {/* Informações do Contrato - Não Editável */}
+                            <div className="md:col-span-2 bg-gray-100 p-4 rounded-lg border-l-4 border-gray-400">
+                                <h3 className="font-bold text-lg mb-3 text-gray-700">Detalhes de Identificação</h3>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className={labelClass}>Número do Contrato</label>
+                                        <input type="text" value={proposta.numero_contrato || 'N/A'} disabled className={`${inputClass} bg-gray-200 cursor-not-allowed text-gray-700 font-semibold`} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Dados Pessoais (COM CAMPO VENDEDOR INSERIDO) */}
+                            <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+                                <h3 className="font-bold text-lg mb-4 text-blue-800">Dados Pessoais</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className={labelClass}>Nome Completo / Fantasia</label>
+                                        <input type="text" name="nome_completo" value={formData.nome_completo} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Email</label>
+                                        <input type="email" name="email" value={formData.email || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Telefone</label>
+                                        <input type="text" name="telefone" value={formData.telefone || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>{formData.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'}</label>
+                                        <input 
+                                            type="text" 
+                                            name={formData.tipo_pessoa === 'fisica' ? 'cpf' : 'cnpj'} 
+                                            value={formData.tipo_pessoa === 'fisica' ? formData.cpf || '' : formData.cnpj || ''} 
+                                            onChange={handleChange} 
+                                            className={inputClass} 
+                                        />
+                                    </div>
+                                    {/* NOVO CAMPO VENDEDOR - POSICIONADO CORRETAMENTE */}
+                                    <div>
+                                        <label className={labelClass}>Vendedor</label>
+                                        <input type="text" name="vendedor" value={formData.vendedor || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    {/* CAMPO STATUS - ADICIONADO */}
+                                    <div>
+                                        <label className={labelClass}>Status da Proposta</label>
+                                        <select name="status" value={formData.status || 'pendente'} onChange={handleChange} className={inputClass}>
+                                            <option value="pendente">🟡 Pendente</option>
+                                            <option value="aprovado">🟢 Aprovado</option>
+                                            <option value="reprovado">🔴 Reprovado</option>
+                                            <option value="lista_espera">🟠 Lista de Espera</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Dados de Endereço e Instalação (MANTIDOS CORRIGIDOS) */}
+                            <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
+                                <h3 className="font-bold text-lg mb-4 text-green-800">Endereço e Instalação</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className={labelClass}>CEP</label>
+                                        <input type="text" name="cep" value={formData.cep || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Logradouro</label>
+                                        <input type="text" name="logradouro" value={formData.logradouro || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={labelClass}>Número</label>
+                                            <input type="text" name="numero_endereco" value={formData.numero_endereco || ''} onChange={handleChange} className={inputClass} />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>Complemento</label>
+                                            <input type="text" name="complemento" value={formData.complemento || ''} onChange={handleChange} className={inputClass} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={labelClass}>Cidade</label>
+                                            <input type="text" name="cidade" value={formData.cidade || ''} onChange={handleChange} className={inputClass} />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>Estado (UF)</label>
+                                            <input type="text" name="estado" value={formData.estado || ''} onChange={handleChange} className={inputClass} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Distribuidora</label>
+                                        <input type="text" name="distribuidora_energia" value={formData.distribuidora_energia || ''} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Consumo Médio (kWh)</label>
+                                        <input type="number" step="1" name="consumo_kw" value={formData.consumo_kw || 0} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Botões do Modal */}
+                        <div className="p-6 flex justify-end gap-3 border-t border-gray-200">
+                            <button onClick={onClose} className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600">
+                                Cancelar
+                            </button>
+                            <button onClick={handleSave} disabled={saving} className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50">
+                                {saving ? 'Salvando...' : '💾 Salvar Alterações'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- COMPONENTE PRINCIPAL: ADMIN PANEL ---
         // --- COMPONENTE: GESTÃO DE VENDEDORES ---
         function VendedoresGestao() {
             const [vendedores, setVendedores] = useState([]);
             const [loading, setLoading] = useState(false);
-            const [mostrarFormulario, setMostrarFormulario] = useState(false);
-            const [vendedorSelecionado, setVendedorSelecionado] = useState(null);
-            const [mostrarDetalhes, setMostrarDetalhes] = useState(false);
-            const [filtroStatus, setFiltroStatus] = useState('todos');
             const [busca, setBusca] = useState('');
+            const [filtroStatus, setFiltroStatus] = useState('todos');
             
-            const [formVendedor, setFormVendedor] = useState({
-                nome_completo: '',
-                cpf: '',
-                email: '',
-                telefone: '',
-                celular: '',
-                data_nascimento: '',
-                cep: '',
-                logradouro: '',
-                numero: '',
-                complemento: '',
-                bairro: '',
-                cidade: '',
-                estado: '',
-                banco: '',
-                agencia: '',
-                conta: '',
-                tipo_conta: 'corrente',
-                pix: '',
-                rg: '',
-                comissao_percentual: '5.00',
-                meta_mensal: '0',
-                codigo_vendedor: '',
-                observacoes: '',
-                status: 'ativo'
-            });
-
-            const [arquivos, setArquivos] = useState({
-                rg_frente: null,
-                rg_verso: null,
-                comprovante_residencia: null
-            });
-
-            const [errors, setErrors] = useState({});
-
-            useEffect(() => {
-                carregarVendedores();
-            }, []);
-
+            useEffect(() => { carregarVendedores(); }, []);
+            
             const carregarVendedores = async () => {
                 setLoading(true);
                 try {
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/vendedores?select=*&order=data_cadastro.desc`, {
+                        headers: { 'Authorization': `Bearer ${SUPABASE_KEY}`, 'apikey': SUPABASE_KEY }
+                    });
+                    const data = await response.json();
+                    setVendedores(data || []);
+                } catch (error) {
+                    console.error('Erro ao carregar vendedores:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            const vendedoresFiltrados = vendedores.filter(v => {
+                const matchStatus = filtroStatus === 'todos' || v.status === filtroStatus;
+                const matchBusca = !busca || v.nome_completo?.toLowerCase().includes(busca.toLowerCase()) || v.email?.toLowerCase().includes(busca.toLowerCase()) || v.codigo_vendedor?.toLowerCase().includes(busca.toLowerCase());
+                return matchStatus && matchBusca;
+            });
+            
+            return (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <div className="flex justify-between items-center mb-6 border-b pb-4">
+                        <h2 className="text-2xl font-bold text-gray-800">👥 Gestão de Vendedores</h2>
+                        <button onClick={() => alert('Execute o script SQL para criar a tabela vendedores')} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700">➕ Novo Vendedor</button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <input type="text" placeholder="🔍 Buscar vendedor..." value={busca} onChange={(e) => setBusca(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
+                        <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg">
+                            <option value="todos">Todos</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option>
+                        </select>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4 mb-6">
+                        <div className="bg-blue-50 p-4 rounded-lg"><p className="text-sm text-gray-600">Total</p><p className="text-2xl font-bold text-blue-800">{vendedores.length}</p></div>
+                        <div className="bg-green-50 p-4 rounded-lg"><p className="text-sm text-gray-600">Ativos</p><p className="text-2xl font-bold text-green-800">{vendedores.filter(v => v.status === 'ativo').length}</p></div>
+                        <div className="bg-yellow-50 p-4 rounded-lg"><p className="text-sm text-gray-600">Inativos</p><p className="text-2xl font-bold text-yellow-800">{vendedores.filter(v => v.status === 'inativo').length}</p></div>
+                        <div className="bg-purple-50 p-4 rounded-lg"><p className="text-sm text-gray-600">Com Vendas</p><p className="text-2xl font-bold text-purple-800">{vendedores.filter(v => v.ultima_venda).length}</p></div>
+                    </div>
+                    {loading ? <div className="text-center py-8"><p>⏳ Carregando...</p></div> : vendedoresFiltrados.length === 0 ? <div className="text-center py-8 bg-gray-50 rounded-lg"><p>📭 Nenhum vendedor encontrado. Execute o script SQL para criar a tabela.</p></div> : (
+                        <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50"><tr><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Comissão</th><th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th></tr></thead><tbody className="bg-white divide-y divide-gray-200">{vendedoresFiltrados.map(v => (<tr key={v.id} className="hover:bg-gray-50"><td className="px-4 py-3 text-sm font-mono">{v.codigo_vendedor}</td><td className="px-4 py-3 text-sm">{v.nome_completo}</td><td className="px-4 py-3 text-sm text-gray-600">{v.email}</td><td className="px-4 py-3 text-sm font-semibold text-green-600">{v.comissao_percentual}%</td><td className="px-4 py-3 text-sm"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${v.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{v.status === 'ativo' ? '✅ Ativo' : '⏸️ Inativo'}</span></td></tr>))}</tbody></table></div>
+                    )}
+                </div>
+            );
+        }
+
+        function AdminPanel() {
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [propostas, setPropostas] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [selectedProposta, setSelectedProposta] = useState(null); 
+            const [propostaAnexos, setPropostaAnexos] = useState(null); 
+            const [savingProposta, setSavingProposta] = useState(false); 
+            const [filtro, setFiltro] = useState('todos');
+            const [busca, setBusca] = useState('');
+            const [activeTab, setActiveTab] = useState('propostas');
+            const [tarifaKwh, setTarifaKwh] = useState('0.842355');
+            const [proporcaoEnergia, setProporcaoEnergia] = useState('0.81');
+            const [proporcaoImpostos, setProporcaoImpostos] = useState('0.19');
+            const [descontoPercentual, setDescontoPercentual] = useState('15'); 
+            const [tarifaId, setTarifaId] = useState(null);
+            const [proporcaoEnergiaId, setProporcaoEnergiaId] = useState(null);
+            const [proporcaoImpostosId, setProporcaoImpostosId] = useState(null);
+            const [descontoId, setDescontoId] = useState(null);
+            const [savingConfig, setSavingConfig] = useState(false);
+            
+            // Estados para editor de contrato
+            const [templates, setTemplates] = useState([]);
+            const [loadingTemplates, setLoadingTemplates] = useState(false);
+            const [savingTemplates, setSavingTemplates] = useState(false);
+
+            useEffect(() => {
+                const authStatus = localStorage.getItem('oby_admin_auth');
+                if (authStatus === 'true') {
+                    setIsAuthenticated(true);
+                    carregarPropostas();
+                    carregarConfiguracoes();
+                }
+            }, []);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (!event.target.closest('button')) {
+                        setPropostas(prev => prev.map(p => ({...p, showMenu: false})));
+                    }
+                };
+                document.addEventListener('click', handleClickOutside);
+                return () => document.removeEventListener('click', handleClickOutside);
+            }, []);
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (username === ADMIN_USER && password === ADMIN_PASS) {
+                    setIsAuthenticated(true);
+                    localStorage.setItem('oby_admin_auth', 'true');
+                    carregarPropostas();
+                    carregarConfiguracoes();
+                } else {
+                    alert('Usuário ou senha incorretos!');
+                }
+            };
+
+            const handleLogout = () => {
+                setIsAuthenticated(false);
+                localStorage.removeItem('oby_admin_auth');
+                setUsername('');
+                setPassword('');
+            };
+
+            const carregarPropostas = async () => {
+                setLoading(true);
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?select=*&order=created_at.desc`, {
                         headers: {
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
                             'apikey': SUPABASE_KEY
                         }
                     });
                     const data = await response.json();
-                    setVendedores(data || []);
+                    setPropostas(data.map(p => ({...p, showMenu: false, updating: false})));
                 } catch (error) {
-                    console.error('Erro ao carregar vendedores:', error);
-                    alert('Erro ao carregar vendedores');
+                    console.error('Erro ao carregar propostas:', error);
+                    alert('Erro ao carregar propostas');
                 } finally {
                     setLoading(false);
                 }
             };
 
-            const handleInputChange = (e) => {
-                const { name, value } = e.target;
-                setFormVendedor(prev => ({ ...prev, [name]: value }));
-                if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+            // Funções de Edição 
+            const handleEditClick = (proposta) => {
+                setSelectedProposta(proposta);
             };
 
-            const handleFileChange = (e) => {
-                const { name, files } = e.target;
-                if (files && files[0]) {
-                    setArquivos(prev => ({ ...prev, [name]: files[0] }));
-                }
-            };
-
-            const validarCPF = (cpf) => {
-                cpf = cpf.replace(/[^\d]/g, '');
-                if (cpf.length !== 11) return false;
+            const handleSaveEdit = async (dataToSave) => {
+                setSavingProposta(true);
+                console.log('🔄 Iniciando edição de proposta...', dataToSave);
                 
-                let soma = 0;
-                let resto;
+                // Extrai o ID para usar no filtro e cria o payload excluindo o ID
+                const propostaId = dataToSave.id;
+                // Exclui o ID e cria o objeto de payload a ser enviado para o Supabase
+                const { id, ...payloadForSupabase } = dataToSave; 
                 
-                if (cpf === "00000000000") return false;
-                
-                for (let i = 1; i <= 9; i++) 
-                    soma += parseInt(cpf.substring(i-1, i)) * (11 - i);
-                resto = (soma * 10) % 11;
-                
-                if ((resto === 10) || (resto === 11)) resto = 0;
-                if (resto !== parseInt(cpf.substring(9, 10))) return false;
-                
-                soma = 0;
-                for (let i = 1; i <= 10; i++) 
-                    soma += parseInt(cpf.substring(i-1, i)) * (12 - i);
-                resto = (soma * 10) % 11;
-                
-                if ((resto === 10) || (resto === 11)) resto = 0;
-                if (resto !== parseInt(cpf.substring(10, 11))) return false;
-                
-                return true;
-            };
-
-            const validarFormulario = () => {
-                const novosErros = {};
-
-                if (!formVendedor.nome_completo.trim()) novosErros.nome_completo = 'Nome completo obrigatório';
-                if (!formVendedor.cpf.trim()) {
-                    novosErros.cpf = 'CPF obrigatório';
-                } else if (!validarCPF(formVendedor.cpf)) {
-                    novosErros.cpf = 'CPF inválido';
-                }
-                if (!formVendedor.email.trim()) {
-                    novosErros.email = 'Email obrigatório';
-                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formVendedor.email)) {
-                    novosErros.email = 'Email inválido';
-                }
-                if (!formVendedor.telefone.trim()) novosErros.telefone = 'Telefone obrigatório';
-                if (!formVendedor.codigo_vendedor.trim()) novosErros.codigo_vendedor = 'Código do vendedor obrigatório';
-                
-                const comissao = parseFloat(formVendedor.comissao_percentual);
-                if (isNaN(comissao) || comissao < 0 || comissao > 100) {
-                    novosErros.comissao_percentual = 'Comissão deve estar entre 0 e 100';
-                }
-
-                setErrors(novosErros);
-                return Object.keys(novosErros).length === 0;
-            };
-
-            const uploadArquivo = async (arquivo, pasta) => {
-                if (!arquivo) return null;
-
-                const nomeArquivo = `${pasta}/${Date.now()}_${arquivo.name}`;
-                const formData = new FormData();
-                formData.append('file', arquivo);
-
                 try {
-                    const response = await fetch(`${SUPABASE_URL}/storage/v1/object/documentos-vendedores/${nomeArquivo}`, {
-                        method: 'POST',
+                    // O filtro usa o ID (UUID)
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
+                        method: 'PATCH',
                         headers: {
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'apikey': SUPABASE_KEY
+                            'apikey': SUPABASE_KEY,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
                         },
-                        body: arquivo
+                        // Envia o payload que não contém o ID, garantindo a cirurgia no JSON
+                        body: JSON.stringify(payloadForSupabase)
                     });
 
                     if (response.ok) {
-                        return `${SUPABASE_URL}/storage/v1/object/public/documentos-vendedores/${nomeArquivo}`;
+                        const data = await response.json();
+                        console.log('✅ Proposta atualizada com sucesso!', data);
+                        // Atualiza a proposta na lista
+                        setPropostas(prev => prev.map(p => 
+                            p.id === propostaId ? {...data[0], showMenu: false, updating: false} : p
+                        ));
+                        setSelectedProposta(null); // Fecha o modal
+                        alert('✅ Proposta atualizada com sucesso!');
+                    } else {
+                        const errorText = await response.text();
+                        console.error('❌ Erro ao salvar proposta:', errorText);
+                        alert('❌ Erro ao salvar proposta: ' + errorText);
                     }
-                    return null;
                 } catch (error) {
-                    console.error('Erro ao fazer upload:', error);
-                    return null;
+                    console.error('❌ Erro ao salvar proposta:', error);
+                    alert('Erro inesperado ao salvar proposta.');
+                } finally {
+                    setSavingProposta(false);
                 }
             };
 
-            const salvarVendedor = async () => {
-                if (!validarFormulario()) {
-                    alert('Por favor, corrija os erros no formulário');
-                    return;
-                }
 
-                setLoading(true);
-
+            const carregarConfiguracoes = async () => {
                 try {
-                    // Upload dos arquivos
-                    const urlRgFrente = await uploadArquivo(arquivos.rg_frente, 'rg_frente');
-                    const urlRgVerso = await uploadArquivo(arquivos.rg_verso, 'rg_verso');
-                    const urlComprovante = await uploadArquivo(arquivos.comprovante_residencia, 'comprovantes');
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?select=*`, {
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY
+                        }
+                    });
+                    const data = await response.json();
+                    
+                    if (data && data.length > 0) {
+                        data.forEach(config => {
+                            if (config.chave === 'tarifa_kwh') {
+                                setTarifaKwh(config.valor);
+                                setTarifaId(config.id);
+                            }
+                            if (config.chave === 'proporcao_energia') {
+                                setProporcaoEnergia(config.valor);
+                                setProporcaoEnergiaId(config.id);
+                            }
+                            if (config.chave === 'proporcao_impostos') {
+                                setProporcaoImpostos(config.valor);
+                                setProporcaoImpostosId(config.id);
+                            }
+                            if (config.chave === 'desconto_percentual') {
+                                setDescontoPercentual(config.valor);
+                                setDescontoId(config.id);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao carregar configurações:', error);
+                }
+            };
 
-                    const dadosVendedor = {
-                        ...formVendedor,
-                        cpf: formVendedor.cpf.replace(/[^\d]/g, ''),
-                        comissao_percentual: parseFloat(formVendedor.comissao_percentual),
-                        meta_mensal: parseInt(formVendedor.meta_mensal) || 0,
-                        arquivo_rg_frente_url: urlRgFrente,
-                        arquivo_rg_verso_url: urlRgVerso,
-                        arquivo_comprovante_residencia_url: urlComprovante
-                    };
+            // Carregar templates do contrato
+            const carregarTemplates = async () => {
+                setLoadingTemplates(true);
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?select=*&order=ordem.asc`, {
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY
+                        }
+                    });
+                    const data = await response.json();
+                    setTemplates(data);
+                } catch (error) {
+                    console.error('❌ Erro ao carregar templates:', error);
+                } finally {
+                    setLoadingTemplates(false);
+                }
+            };
 
-                    let response;
-                    if (vendedorSelecionado) {
-                        // Atualização
-                        response = await fetch(`${SUPABASE_URL}/rest/v1/vendedores?id=eq.${vendedorSelecionado.id}`, {
+            // Salvar templates do contrato
+            const salvarTemplates = async () => {
+                setSavingTemplates(true);
+                try {
+                    for (const template of templates) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?id=eq.${template.id}`, {
                             method: 'PATCH',
                             headers: {
                                 'Authorization': `Bearer ${SUPABASE_KEY}`,
@@ -219,905 +597,272 @@
                                 'Content-Type': 'application/json',
                                 'Prefer': 'return=representation'
                             },
-                            body: JSON.stringify(dadosVendedor)
+                            body: JSON.stringify({
+                                texto: template.texto
+                            })
                         });
+                    }
+                    alert('✅ Templates salvos com sucesso!');
+                } catch (error) {
+                    console.error('Erro ao salvar templates:', error);
+                    alert('Erro ao salvar templates. Tente novamente.');
+                } finally {
+                    setSavingTemplates(false);
+                }
+            };
+
+            const atualizarTemplate = (id, novoTexto) => {
+                setTemplates(templates.map(t => 
+                    t.id === id ? {...t, texto: novoTexto} : t
+                ));
+            };
+
+            const salvarConfiguracoes = async () => {
+                setSavingConfig(true);
+                try {
+                    console.log('💾 Salvando configurações...');
+                    
+                    // 1. Salvar TARIFA
+                    if (tarifaId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${tarifaId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                valor: String(tarifaKwh)
+                            })
+                        });
+                        console.log('✅ Tarifa salva:', tarifaKwh);
                     } else {
-                        // Criação
-                        response = await fetch(`${SUPABASE_URL}/rest/v1/vendedores`, {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
                             method: 'POST',
                             headers: {
                                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                                 'apikey': SUPABASE_KEY,
-                                'Content-Type': 'application/json',
-                                'Prefer': 'return=representation'
+                                'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify(dadosVendedor)
+                            body: JSON.stringify({
+                                chave: 'tarifa_kwh',
+                                valor: String(tarifaKwh),
+                                descricao: 'Tarifa por kWh'
+                            })
                         });
                     }
 
-                    if (response.ok) {
-                        alert(vendedorSelecionado ? 'Vendedor atualizado com sucesso!' : 'Vendedor cadastrado com sucesso!');
-                        setMostrarFormulario(false);
-                        limparFormulario();
-                        carregarVendedores();
+                    // 2. Salvar PROPORÇÃO ENERGIA
+                    if (proporcaoEnergiaId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${proporcaoEnergiaId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                valor: String(proporcaoEnergia)
+                            })
+                        });
+                        console.log('✅ Proporção Energia salva:', proporcaoEnergia);
                     } else {
-                        const erro = await response.json();
-                        alert('Erro ao salvar vendedor: ' + (erro.message || 'Erro desconhecido'));
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                chave: 'proporcao_energia',
+                                valor: String(proporcaoEnergia),
+                                descricao: 'Proporção de energia na conta'
+                            })
+                        });
                     }
+
+                    // 3. Salvar PROPORÇÃO IMPOSTOS
+                    if (proporcaoImpostosId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${proporcaoImpostosId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                valor: String(proporcaoImpostos)
+                            })
+                        });
+                        console.log('✅ Proporção Impostos salva:', proporcaoImpostos);
+                    } else {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                chave: 'proporcao_impostos',
+                                valor: String(proporcaoImpostos),
+                                descricao: 'Proporção de impostos na conta'
+                            })
+                        });
+                    }
+
+                    // 4. Salvar DESCONTO
+                    if (descontoId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${descontoId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                valor: String(descontoPercentual)
+                            })
+                        });
+                        console.log('✅ Desconto salvo:', descontoPercentual);
+                    } else {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                chave: 'desconto_percentual',
+                                valor: String(descontoPercentual),
+                                descricao: 'Percentual de desconto aplicado na proposta'
+                            })
+                        });
+                    }
+
+                    console.log('✅ Todas as configurações salvas!');
+                    alert(`✅ Configurações atualizadas com sucesso!\n\n` +
+                          `Desconto: ${descontoPercentual}%\n` +
+                          `Tarifa: R$ ${tarifaKwh}/kWh\n` +
+                          `Proporção Energia: ${proporcaoEnergia}\n` +
+                          `Proporção Impostos: ${proporcaoImpostos}`);
+                    
+                    await carregarConfiguracoes();
                 } catch (error) {
-                    console.error('Erro ao salvar vendedor:', error);
-                    alert('Erro ao salvar vendedor');
+                    console.error('❌ Erro ao salvar configurações:', error);
+                    alert('Erro ao salvar configurações. Verifique o console.');
                 } finally {
-                    setLoading(false);
+                    setSavingConfig(false);
                 }
             };
 
-            const limparFormulario = () => {
-                setFormVendedor({
-                    nome_completo: '',
-                    cpf: '',
-                    email: '',
-                    telefone: '',
-                    celular: '',
-                    data_nascimento: '',
-                    cep: '',
-                    logradouro: '',
-                    numero: '',
-                    complemento: '',
-                    bairro: '',
-                    cidade: '',
-                    estado: '',
-                    banco: '',
-                    agencia: '',
-                    conta: '',
-                    tipo_conta: 'corrente',
-                    pix: '',
-                    rg: '',
-                    comissao_percentual: '5.00',
-                    meta_mensal: '0',
-                    codigo_vendedor: '',
-                    observacoes: '',
-                    status: 'ativo'
-                });
-                setArquivos({
-                    rg_frente: null,
-                    rg_verso: null,
-                    comprovante_residencia: null
-                });
-                setVendedorSelecionado(null);
-                setErrors({});
+            
+
+            
+
+            const formatarData = (dataISO) => {
+                const data = new Date(dataISO);
+                return data.toLocaleDateString('pt-BR');
             };
 
-            const editarVendedor = (vendedor) => {
-                setVendedorSelecionado(vendedor);
-                setFormVendedor({
-                    nome_completo: vendedor.nome_completo || '',
-                    cpf: vendedor.cpf || '',
-                    email: vendedor.email || '',
-                    telefone: vendedor.telefone || '',
-                    celular: vendedor.celular || '',
-                    data_nascimento: vendedor.data_nascimento || '',
-                    cep: vendedor.cep || '',
-                    logradouro: vendedor.logradouro || '',
-                    numero: vendedor.numero || '',
-                    complemento: vendedor.complemento || '',
-                    bairro: vendedor.bairro || '',
-                    cidade: vendedor.cidade || '',
-                    estado: vendedor.estado || '',
-                    banco: vendedor.banco || '',
-                    agencia: vendedor.agencia || '',
-                    conta: vendedor.conta || '',
-                    tipo_conta: vendedor.tipo_conta || 'corrente',
-                    pix: vendedor.pix || '',
-                    rg: vendedor.rg || '',
-                    comissao_percentual: vendedor.comissao_percentual?.toString() || '5.00',
-                    meta_mensal: vendedor.meta_mensal?.toString() || '0',
-                    codigo_vendedor: vendedor.codigo_vendedor || '',
-                    observacoes: vendedor.observacoes || '',
-                    status: vendedor.status || 'ativo'
-                });
-                setMostrarFormulario(true);
+            const gerarContratoPDF = (proposta) => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                doc.setFont("helvetica");
+                
+                // Número do Contrato
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Contrato Nº: ${proposta.numero_contrato || 'N/A'}`, 20, 15);
+                
+                // Título
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(18);
+                doc.setFont("helvetica", "bold");
+                doc.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", 105, 20, { align: "center" });
+                
+                // Conteúdo
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "normal");
+                
+                const nomeCompleto = proposta.nome_completo || proposta.nome_fantasia || 'Sem nome';
+                
+                const cpfCnpj = proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj;
+                
+                doc.text(`CONTRATANTE: ${nomeCompleto}`, 20, 40);
+                doc.text(`CPF/CNPJ: ${cpfCnpj}`, 20, 50);
+                doc.text(`E-mail: ${proposta.email}`, 20, 60);
+                doc.text(`Telefone: ${proposta.telefone}`, 20, 70);
+                doc.text(`Endereço: ${proposta.logradouro}, ${proposta.numero_endereco}`, 20, 80); 
+                doc.text(`${proposta.cidade} - ${proposta.estado}, CEP: ${proposta.cep}`, 20, 90);
+                
+                doc.text("CONTRATADA: OBY ENERGY", 20, 110);
+                
+                // Salvar
+                doc.save(`contrato_${nomeCompleto.replace(/\s+/g, '_')}.pdf`);
             };
 
-            const alterarStatusVendedor = async (vendedor, novoStatus) => {
-                if (!confirm(`Deseja ${novoStatus === 'inativo' ? 'desativar' : 'ativar'} o vendedor ${vendedor.nome_completo}?`)) {
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/vendedores?id=eq.${vendedor.id}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'apikey': SUPABASE_KEY,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ status: novoStatus })
-                    });
-
-                    if (response.ok) {
-                        alert('Status atualizado com sucesso!');
-                        carregarVendedores();
-                    }
-                } catch (error) {
-                    console.error('Erro ao alterar status:', error);
-                    alert('Erro ao alterar status');
-                }
+            const getStatusBadge = (status) => {
+                const configs = {
+                    'pendente': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '🟡 Pendente' },
+                    'aprovado': { bg: 'bg-green-100', text: 'text-green-800', label: '🟢 Aprovado' },
+                    'reprovado': { bg: 'bg-red-100', text: 'text-red-800', label: '🔴 Reprovado' },
+                    'lista_espera': { bg: 'bg-orange-100', text: 'text-orange-800', label: '🟠 Lista Espera' }
+                };
+                const config = configs[status] || configs['pendente'];
+                return (
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${config.bg} ${config.text}`}>
+                        {config.label}
+                    </span>
+                );
             };
 
-            const vendedoresFiltrados = vendedores.filter(v => {
-                const matchStatus = filtroStatus === 'todos' || v.status === filtroStatus;
-                const matchBusca = !busca || 
-                    v.nome_completo?.toLowerCase().includes(busca.toLowerCase()) ||
-                    v.email?.toLowerCase().includes(busca.toLowerCase()) ||
-                    v.codigo_vendedor?.toLowerCase().includes(busca.toLowerCase()) ||
-                    v.cpf?.includes(busca);
-                return matchStatus && matchBusca;
+            const propostasFiltradas = propostas.filter(proposta => {
+                const matchFiltro = filtro === 'todos' || proposta.status === filtro;
+                const matchBusca = busca === '' || 
+                    proposta.nome_completo?.toLowerCase().includes(busca.toLowerCase()) ||
+                    proposta.nome_fantasia?.toLowerCase().includes(busca.toLowerCase()) ||
+                    proposta.email?.toLowerCase().includes(busca.toLowerCase()) ||
+                    proposta.cidade?.toLowerCase().includes(busca.toLowerCase());
+                return matchFiltro && matchBusca;
             });
 
-            const formatarCPF = (cpf) => {
-                if (!cpf) return '';
-                cpf = cpf.replace(/\D/g, '');
-                return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-            };
-
-            const formatarTelefone = (tel) => {
-                if (!tel) return '';
-                tel = tel.replace(/\D/g, '');
-                if (tel.length === 11) {
-                    return tel.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-                }
-                return tel.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-            };
-
-            return (
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                    <div className="flex justify-between items-center mb-6 border-b pb-4">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-800">👥 Gestão de Vendedores</h2>
-                            <p className="text-sm text-gray-600 mt-1">Cadastre e gerencie vendedores da OBY Energy</p>
-                        </div>
-                        <button 
-                            onClick={() => {
-                                limparFormulario();
-                                setMostrarFormulario(true);
-                            }}
-                            className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center gap-2"
-                        >
-                            ➕ Novo Vendedor
-                        </button>
-                    </div>
-
-                    {/* Filtros */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div>
-                            <input
-                                type="text"
-                                placeholder="🔍 Buscar por nome, email, CPF ou código..."
-                                value={busca}
-                                onChange={(e) => setBusca(e.target.value)}
-                                className="w-full p-3 border border-gray-300 rounded-lg"
-                            />
-                        </div>
-                        <div>
-                            <select
-                                value={filtroStatus}
-                                onChange={(e) => setFiltroStatus(e.target.value)}
-                                className="w-full p-3 border border-gray-300 rounded-lg"
-                            >
-                                <option value="todos">Todos os Status</option>
-                                <option value="ativo">Ativos</option>
-                                <option value="inativo">Inativos</option>
-                                <option value="suspenso">Suspensos</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Estatísticas */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-blue-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-600">Total</p>
-                            <p className="text-2xl font-bold text-blue-800">{vendedores.length}</p>
-                        </div>
-                        <div className="bg-green-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-600">Ativos</p>
-                            <p className="text-2xl font-bold text-green-800">
-                                {vendedores.filter(v => v.status === 'ativo').length}
-                            </p>
-                        </div>
-                        <div className="bg-yellow-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-600">Inativos</p>
-                            <p className="text-2xl font-bold text-yellow-800">
-                                {vendedores.filter(v => v.status === 'inativo').length}
-                            </p>
-                        </div>
-                        <div className="bg-purple-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-600">Com Vendas</p>
-                            <p className="text-2xl font-bold text-purple-800">
-                                {vendedores.filter(v => v.ultima_venda).length}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Lista de Vendedores */}
-                    {loading ? (
-                        <div className="text-center py-8">
-                            <p className="text-gray-600">⏳ Carregando vendedores...</p>
-                        </div>
-                    ) : vendedoresFiltrados.length === 0 ? (
-                        <div className="text-center py-8 bg-gray-50 rounded-lg">
-                            <p className="text-gray-600">📭 Nenhum vendedor encontrado</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">CPF</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telefone</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Comissão</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {vendedoresFiltrados.map(vendedor => (
-                                        <tr key={vendedor.id} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 text-sm font-mono text-gray-900">
-                                                {vendedor.codigo_vendedor}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-900">
-                                                {vendedor.nome_completo}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">
-                                                {formatarCPF(vendedor.cpf)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">
-                                                {vendedor.email}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">
-                                                {formatarTelefone(vendedor.telefone)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm font-semibold text-green-600">
-                                                {vendedor.comissao_percentual}%
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">
-                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                                    vendedor.status === 'ativo' ? 'bg-green-100 text-green-800' :
-                                                    vendedor.status === 'inativo' ? 'bg-gray-100 text-gray-800' :
-                                                    'bg-red-100 text-red-800'
-                                                }`}>
-                                                    {vendedor.status === 'ativo' ? '✅ Ativo' :
-                                                     vendedor.status === 'inativo' ? '⏸️ Inativo' :
-                                                     '🚫 Suspenso'}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            setVendedorSelecionado(vendedor);
-                                                            setMostrarDetalhes(true);
-                                                        }}
-                                                        className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                                        title="Ver detalhes"
-                                                    >
-                                                        👁️
-                                                    </button>
-                                                    <button
-                                                        onClick={() => editarVendedor(vendedor)}
-                                                        className="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                                                        title="Editar"
-                                                    >
-                                                        ✏️
-                                                    </button>
-                                                    {vendedor.status === 'ativo' ? (
-                                                        <button
-                                                            onClick={() => alterarStatusVendedor(vendedor, 'inativo')}
-                                                            className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
-                                                            title="Desativar"
-                                                        >
-                                                            ⏸️
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            onClick={() => alterarStatusVendedor(vendedor, 'ativo')}
-                                                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                                                            title="Ativar"
-                                                        >
-                                                            ▶️
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    {/* Modal Formulário */}
-                    {mostrarFormulario && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8">
-                                <div className="bg-gradient-to-r from-green-600 to-green-700 p-6 rounded-t-xl">
-                                    <h3 className="text-2xl font-bold text-white">
-                                        {vendedorSelecionado ? '✏️ Editar Vendedor' : '➕ Novo Vendedor'}
-                                    </h3>
-                                </div>
-                                
-                                <div className="p-6 max-h-[70vh] overflow-y-auto">
-                                    <div className="space-y-6">
-                                        {/* Dados Pessoais */}
-                                        <div className="bg-blue-50 p-4 rounded-lg">
-                                            <h4 className="font-bold text-lg mb-4 text-blue-900">👤 Dados Pessoais</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Nome Completo *</label>
-                                                    <input
-                                                        type="text"
-                                                        name="nome_completo"
-                                                        value={formVendedor.nome_completo}
-                                                        onChange={handleInputChange}
-                                                        className={`w-full p-3 border rounded-lg ${errors.nome_completo ? 'border-red-500' : 'border-gray-300'}`}
-                                                    />
-                                                    {errors.nome_completo && <p className="text-red-500 text-sm mt-1">{errors.nome_completo}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">CPF *</label>
-                                                    <input
-                                                        type="text"
-                                                        name="cpf"
-                                                        value={formVendedor.cpf}
-                                                        onChange={handleInputChange}
-                                                        placeholder="000.000.000-00"
-                                                        className={`w-full p-3 border rounded-lg ${errors.cpf ? 'border-red-500' : 'border-gray-300'}`}
-                                                    />
-                                                    {errors.cpf && <p className="text-red-500 text-sm mt-1">{errors.cpf}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">RG</label>
-                                                    <input
-                                                        type="text"
-                                                        name="rg"
-                                                        value={formVendedor.rg}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Data de Nascimento</label>
-                                                    <input
-                                                        type="date"
-                                                        name="data_nascimento"
-                                                        value={formVendedor.data_nascimento}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Contato */}
-                                        <div className="bg-purple-50 p-4 rounded-lg">
-                                            <h4 className="font-bold text-lg mb-4 text-purple-900">📞 Contato</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Email *</label>
-                                                    <input
-                                                        type="email"
-                                                        name="email"
-                                                        value={formVendedor.email}
-                                                        onChange={handleInputChange}
-                                                        className={`w-full p-3 border rounded-lg ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
-                                                    />
-                                                    {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Telefone *</label>
-                                                    <input
-                                                        type="text"
-                                                        name="telefone"
-                                                        value={formVendedor.telefone}
-                                                        onChange={handleInputChange}
-                                                        placeholder="(00) 0000-0000"
-                                                        className={`w-full p-3 border rounded-lg ${errors.telefone ? 'border-red-500' : 'border-gray-300'}`}
-                                                    />
-                                                    {errors.telefone && <p className="text-red-500 text-sm mt-1">{errors.telefone}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Celular</label>
-                                                    <input
-                                                        type="text"
-                                                        name="celular"
-                                                        value={formVendedor.celular}
-                                                        onChange={handleInputChange}
-                                                        placeholder="(00) 00000-0000"
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Endereço */}
-                                        <div className="bg-green-50 p-4 rounded-lg">
-                                            <h4 className="font-bold text-lg mb-4 text-green-900">📍 Endereço</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">CEP</label>
-                                                    <input
-                                                        type="text"
-                                                        name="cep"
-                                                        value={formVendedor.cep}
-                                                        onChange={handleInputChange}
-                                                        placeholder="00000-000"
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Logradouro</label>
-                                                    <input
-                                                        type="text"
-                                                        name="logradouro"
-                                                        value={formVendedor.logradouro}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Número</label>
-                                                    <input
-                                                        type="text"
-                                                        name="numero"
-                                                        value={formVendedor.numero}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Complemento</label>
-                                                    <input
-                                                        type="text"
-                                                        name="complemento"
-                                                        value={formVendedor.complemento}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Bairro</label>
-                                                    <input
-                                                        type="text"
-                                                        name="bairro"
-                                                        value={formVendedor.bairro}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Cidade</label>
-                                                    <input
-                                                        type="text"
-                                                        name="cidade"
-                                                        value={formVendedor.cidade}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Estado</label>
-                                                    <input
-                                                        type="text"
-                                                        name="estado"
-                                                        value={formVendedor.estado}
-                                                        onChange={handleInputChange}
-                                                        placeholder="PR"
-                                                        maxLength="2"
-                                                        className="w-full p-3 border border-gray-300 rounded-lg uppercase"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Dados Bancários */}
-                                        <div className="bg-yellow-50 p-4 rounded-lg">
-                                            <h4 className="font-bold text-lg mb-4 text-yellow-900">💳 Dados Bancários (Pagamento de Comissões)</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Banco</label>
-                                                    <input
-                                                        type="text"
-                                                        name="banco"
-                                                        value={formVendedor.banco}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Agência</label>
-                                                    <input
-                                                        type="text"
-                                                        name="agencia"
-                                                        value={formVendedor.agencia}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Conta</label>
-                                                    <input
-                                                        type="text"
-                                                        name="conta"
-                                                        value={formVendedor.conta}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Tipo de Conta</label>
-                                                    <select
-                                                        name="tipo_conta"
-                                                        value={formVendedor.tipo_conta}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    >
-                                                        <option value="corrente">Corrente</option>
-                                                        <option value="poupanca">Poupança</option>
-                                                    </select>
-                                                </div>
-                                                <div className="md:col-span-2">
-                                                    <label className="block text-sm font-medium mb-2">Chave PIX</label>
-                                                    <input
-                                                        type="text"
-                                                        name="pix"
-                                                        value={formVendedor.pix}
-                                                        onChange={handleInputChange}
-                                                        placeholder="CPF, Email, Telefone ou Chave Aleatória"
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Configurações de Vendas */}
-                                        <div className="bg-indigo-50 p-4 rounded-lg">
-                                            <h4 className="font-bold text-lg mb-4 text-indigo-900">💼 Configurações de Vendas</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Código do Vendedor *</label>
-                                                    <input
-                                                        type="text"
-                                                        name="codigo_vendedor"
-                                                        value={formVendedor.codigo_vendedor}
-                                                        onChange={handleInputChange}
-                                                        placeholder="VEND001"
-                                                        className={`w-full p-3 border rounded-lg uppercase ${errors.codigo_vendedor ? 'border-red-500' : 'border-gray-300'}`}
-                                                    />
-                                                    {errors.codigo_vendedor && <p className="text-red-500 text-sm mt-1">{errors.codigo_vendedor}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Comissão (%) *</label>
-                                                    <input
-                                                        type="number"
-                                                        name="comissao_percentual"
-                                                        value={formVendedor.comissao_percentual}
-                                                        onChange={handleInputChange}
-                                                        min="0"
-                                                        max="100"
-                                                        step="0.01"
-                                                        className={`w-full p-3 border rounded-lg ${errors.comissao_percentual ? 'border-red-500' : 'border-gray-300'}`}
-                                                    />
-                                                    {errors.comissao_percentual && <p className="text-red-500 text-sm mt-1">{errors.comissao_percentual}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">Meta Mensal</label>
-                                                    <input
-                                                        type="number"
-                                                        name="meta_mensal"
-                                                        value={formVendedor.meta_mensal}
-                                                        onChange={handleInputChange}
-                                                        min="0"
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                </div>
-                                                <div className="md:col-span-3">
-                                                    <label className="block text-sm font-medium mb-2">Status</label>
-                                                    <select
-                                                        name="status"
-                                                        value={formVendedor.status}
-                                                        onChange={handleInputChange}
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    >
-                                                        <option value="ativo">✅ Ativo</option>
-                                                        <option value="inativo">⏸️ Inativo</option>
-                                                        <option value="suspenso">🚫 Suspenso</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Documentos */}
-                                        <div className="bg-orange-50 p-4 rounded-lg">
-                                            <h4 className="font-bold text-lg mb-4 text-orange-900">📄 Documentos</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">RG/CNH (Frente)</label>
-                                                    <input
-                                                        type="file"
-                                                        name="rg_frente"
-                                                        onChange={handleFileChange}
-                                                        accept=".pdf,.jpg,.jpeg,.png"
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                    {arquivos.rg_frente && <p className="text-green-600 text-sm mt-1">✓ {arquivos.rg_frente.name}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium mb-2">RG/CNH (Verso)</label>
-                                                    <input
-                                                        type="file"
-                                                        name="rg_verso"
-                                                        onChange={handleFileChange}
-                                                        accept=".pdf,.jpg,.jpeg,.png"
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                    {arquivos.rg_verso && <p className="text-green-600 text-sm mt-1">✓ {arquivos.rg_verso.name}</p>}
-                                                </div>
-                                                <div className="md:col-span-2">
-                                                    <label className="block text-sm font-medium mb-2">Comprovante de Residência</label>
-                                                    <input
-                                                        type="file"
-                                                        name="comprovante_residencia"
-                                                        onChange={handleFileChange}
-                                                        accept=".pdf,.jpg,.jpeg,.png"
-                                                        className="w-full p-3 border border-gray-300 rounded-lg"
-                                                    />
-                                                    {arquivos.comprovante_residencia && <p className="text-green-600 text-sm mt-1">✓ {arquivos.comprovante_residencia.name}</p>}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Observações */}
-                                        <div>
-                                            <label className="block text-sm font-medium mb-2">Observações</label>
-                                            <textarea
-                                                name="observacoes"
-                                                value={formVendedor.observacoes}
-                                                onChange={handleInputChange}
-                                                rows="3"
-                                                className="w-full p-3 border border-gray-300 rounded-lg"
-                                                placeholder="Informações adicionais sobre o vendedor..."
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-                                    <button
-                                        onClick={() => {
-                                            setMostrarFormulario(false);
-                                            limparFormulario();
-                                        }}
-                                        disabled={loading}
-                                        className="px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 disabled:opacity-50"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={salvarVendedor}
-                                        disabled={loading}
-                                        className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50"
-                                    >
-                                        {loading ? '⏳ Salvando...' : vendedorSelecionado ? '💾 Atualizar' : '➕ Cadastrar'}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Modal Detalhes */}
-                    {mostrarDetalhes && vendedorSelecionado && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-                                <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-t-xl">
-                                    <h3 className="text-2xl font-bold text-white">👤 Detalhes do Vendedor</h3>
-                                </div>
-                                
-                                <div className="p-6 space-y-6">
-                                    {/* Info Básica */}
-                                    <div className="bg-gray-50 p-4 rounded-lg">
-                                        <h4 className="font-bold text-lg mb-3">Informações Básicas</h4>
-                                        <div className="grid grid-cols-2 gap-3 text-sm">
-                                            <div><span className="font-semibold">Código:</span> {vendedorSelecionado.codigo_vendedor}</div>
-                                            <div><span className="font-semibold">Nome:</span> {vendedorSelecionado.nome_completo}</div>
-                                            <div><span className="font-semibold">CPF:</span> {formatarCPF(vendedorSelecionado.cpf)}</div>
-                                            <div><span className="font-semibold">RG:</span> {vendedorSelecionado.rg || 'Não informado'}</div>
-                                            <div><span className="font-semibold">Email:</span> {vendedorSelecionado.email}</div>
-                                            <div><span className="font-semibold">Telefone:</span> {formatarTelefone(vendedorSelecionado.telefone)}</div>
-                                            {vendedorSelecionado.celular && (
-                                                <div><span className="font-semibold">Celular:</span> {formatarTelefone(vendedorSelecionado.celular)}</div>
-                                            )}
-                                            <div><span className="font-semibold">Status:</span> 
-                                                <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
-                                                    vendedorSelecionado.status === 'ativo' ? 'bg-green-100 text-green-800' :
-                                                    vendedorSelecionado.status === 'inativo' ? 'bg-gray-100 text-gray-800' :
-                                                    'bg-red-100 text-red-800'
-                                                }`}>
-                                                    {vendedorSelecionado.status}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Endereço */}
-                                    {(vendedorSelecionado.logradouro || vendedorSelecionado.cidade) && (
-                                        <div className="bg-blue-50 p-4 rounded-lg">
-                                            <h4 className="font-bold text-lg mb-3">📍 Endereço</h4>
-                                            <p className="text-sm">
-                                                {vendedorSelecionado.logradouro && `${vendedorSelecionado.logradouro}, `}
-                                                {vendedorSelecionado.numero && `${vendedorSelecionado.numero}`}
-                                                {vendedorSelecionado.complemento && ` - ${vendedorSelecionado.complemento}`}
-                                                <br/>
-                                                {vendedorSelecionado.bairro && `${vendedorSelecionado.bairro} - `}
-                                                {vendedorSelecionado.cidade && `${vendedorSelecionado.cidade}`}
-                                                {vendedorSelecionado.estado && `/${vendedorSelecionado.estado}`}
-                                                {vendedorSelecionado.cep && <><br/>CEP: {vendedorSelecionado.cep}</>}
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    {/* Dados Bancários */}
-                                    {(vendedorSelecionado.banco || vendedorSelecionado.pix) && (
-                                        <div className="bg-green-50 p-4 rounded-lg">
-                                            <h4 className="font-bold text-lg mb-3">💳 Dados Bancários</h4>
-                                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                                {vendedorSelecionado.banco && <div><span className="font-semibold">Banco:</span> {vendedorSelecionado.banco}</div>}
-                                                {vendedorSelecionado.agencia && <div><span className="font-semibold">Agência:</span> {vendedorSelecionado.agencia}</div>}
-                                                {vendedorSelecionado.conta && <div><span className="font-semibold">Conta:</span> {vendedorSelecionado.conta}</div>}
-                                                {vendedorSelecionado.tipo_conta && <div><span className="font-semibold">Tipo:</span> {vendedorSelecionado.tipo_conta}</div>}
-                                                {vendedorSelecionado.pix && <div className="col-span-2"><span className="font-semibold">PIX:</span> {vendedorSelecionado.pix}</div>}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Comissão e Metas */}
-                                    <div className="bg-yellow-50 p-4 rounded-lg">
-                                        <h4 className="font-bold text-lg mb-3">💼 Comissão e Metas</h4>
-                                        <div className="grid grid-cols-2 gap-3 text-sm">
-                                            <div><span className="font-semibold">Comissão:</span> <span className="text-lg font-bold text-green-600">{vendedorSelecionado.comissao_percentual}%</span></div>
-                                            <div><span className="font-semibold">Meta Mensal:</span> {vendedorSelecionado.meta_mensal} vendas</div>
-                                        </div>
-                                    </div>
-
-                                    {/* Documentos */}
-                                    <div className="bg-purple-50 p-4 rounded-lg">
-                                        <h4 className="font-bold text-lg mb-3">📄 Documentos</h4>
-                                        <div className="space-y-2">
-                                            {vendedorSelecionado.arquivo_rg_frente_url && (
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-sm">🪪 RG/CNH (Frente)</span>
-                                                    <a href={vendedorSelecionado.arquivo_rg_frente_url} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
-                                                        Ver
-                                                    </a>
-                                                </div>
-                                            )}
-                                            {vendedorSelecionado.arquivo_rg_verso_url && (
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-sm">🪪 RG/CNH (Verso)</span>
-                                                    <a href={vendedorSelecionado.arquivo_rg_verso_url} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
-                                                        Ver
-                                                    </a>
-                                                </div>
-                                            )}
-                                            {vendedorSelecionado.arquivo_comprovante_residencia_url && (
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-sm">📄 Comprovante de Residência</span>
-                                                    <a href={vendedorSelecionado.arquivo_comprovante_residencia_url} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
-                                                        Ver
-                                                    </a>
-                                                </div>
-                                            )}
-                                            {!vendedorSelecionado.arquivo_rg_frente_url && !vendedorSelecionado.arquivo_rg_verso_url && !vendedorSelecionado.arquivo_comprovante_residencia_url && (
-                                                <p className="text-sm text-gray-600">Nenhum documento anexado</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Observações */}
-                                    {vendedorSelecionado.observacoes && (
-                                        <div className="bg-gray-50 p-4 rounded-lg">
-                                            <h4 className="font-bold text-lg mb-3">📝 Observações</h4>
-                                            <p className="text-sm whitespace-pre-wrap">{vendedorSelecionado.observacoes}</p>
-                                        </div>
-                                    )}
-
-                                    {/* Auditoria */}
-                                    <div className="bg-gray-100 p-4 rounded-lg">
-                                        <h4 className="font-bold text-lg mb-3">🕐 Informações do Sistema</h4>
-                                        <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-                                            <div><span className="font-semibold">Cadastrado em:</span> {new Date(vendedorSelecionado.data_cadastro).toLocaleString('pt-BR')}</div>
-                                            {vendedorSelecionado.data_atualizacao && (
-                                                <div><span className="font-semibold">Última atualização:</span> {new Date(vendedorSelecionado.data_atualizacao).toLocaleString('pt-BR')}</div>
-                                            )}
-                                            {vendedorSelecionado.ultima_venda && (
-                                                <div><span className="font-semibold">Última venda:</span> {new Date(vendedorSelecionado.ultima_venda).toLocaleString('pt-BR')}</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="p-6 border-t border-gray-200 flex justify-end">
-                                    <button
-                                        onClick={() => {
-                                            setMostrarDetalhes(false);
-                                            setVendedorSelecionado(null);
-                                        }}
-                                        className="px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700"
-                                    >
-                                        Fechar
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        // --- COMPONENTE PRINCIPAL: PAINEL ADMINISTRATIVO ---
-        function AdminPanel() {
-            const [isLoggedIn, setIsLoggedIn] = useState(false);
-            const [username, setUsername] = useState('');
-            const [password, setPassword] = useState('');
-            const [error, setError] = useState('');
-            const [abaAtiva, setAbaAtiva] = useState('propostas');
-
-            const handleLogin = (e) => {
-                e.preventDefault();
-                if (username === ADMIN_USER && password === ADMIN_PASS) {
-                    setIsLoggedIn(true);
-                    setError('');
-                } else {
-                    setError('Usuário ou senha incorretos');
-                }
-            };
-
-            if (!isLoggedIn) {
+            if (!isAuthenticated) {
                 return (
-                    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center p-4">
+                    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
                             <div className="text-center mb-8">
-                                <h1 className="text-3xl font-bold text-gray-800 mb-2">OBY Energy</h1>
-                                <p className="text-gray-600">Painel Administrativo</p>
+                                <h1 className="text-3xl font-bold text-gray-800 mb-2">🔐 Admin OBY Energy</h1>
+                                <p className="text-gray-600">Faça login para acessar o painel</p>
                             </div>
-                            <form onSubmit={handleLogin} className="space-y-6">
+                            <form onSubmit={handleLogin} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Usuário</label>
-                                    <input
-                                        type="text"
-                                        value={username}
+                                    <input 
+                                        type="text" 
+                                        value={username} 
                                         onChange={(e) => setUsername(e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                         required
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
-                                    <input
-                                        type="password"
-                                        value={password}
+                                    <input 
+                                        type="password" 
+                                        value={password} 
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                         required
                                     />
                                 </div>
-                                {error && <p className="text-red-600 text-sm text-center">{error}</p>}
-                                <button
-                                    type="submit"
-                                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-200"
+                                <button 
+                                    type="submit" 
+                                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
                                 >
                                     Entrar
                                 </button>
@@ -1129,71 +874,425 @@
 
             return (
                 <div className="min-h-screen bg-gray-100">
-                    {/* Header */}
-                    <header className="bg-gradient-to-r from-blue-600 to-purple-700 text-white shadow-lg">
-                        <div className="container mx-auto px-4 py-6">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <h1 className="text-3xl font-bold">OBY Energy</h1>
-                                    <p className="text-blue-100 mt-1">Painel Administrativo</p>
-                                </div>
-                                <button
-                                    onClick={() => setIsLoggedIn(false)}
-                                    className="px-6 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg font-semibold transition duration-200"
-                                >
-                                    🚪 Sair
-                                </button>
-                            </div>
+                    <header className="bg-white shadow-md">
+                        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+                            <h1 className="text-2xl font-bold text-blue-600">⚡ OBY Energy Admin</h1>
+                            <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
+                                Sair
+                            </button>
                         </div>
                     </header>
 
-                    {/* Navegação por Abas */}
-                    <div className="bg-white shadow-md border-b">
-                        <div className="container mx-auto px-4">
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setAbaAtiva('propostas')}
-                                    className={`px-6 py-4 font-semibold transition-all ${
-                                        abaAtiva === 'propostas'
-                                            ? 'border-b-4 border-blue-600 text-blue-600'
-                                            : 'text-gray-600 hover:text-blue-600'
-                                    }`}
-                                >
+                    <div className="container mx-auto px-4 py-8">
+                        <div className="mb-6 border-b border-gray-200">
+                            <div className="flex space-x-2">
+                                <button onClick={() => setActiveTab('propostas')} className={`px-6 py-3 font-semibold transition ${activeTab === 'propostas' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
                                     📋 Propostas
                                 </button>
-                                <button
-                                    onClick={() => setAbaAtiva('vendedores')}
-                                    className={`px-6 py-4 font-semibold transition-all ${
-                                        abaAtiva === 'vendedores'
-                                            ? 'border-b-4 border-green-600 text-green-600'
-                                            : 'text-gray-600 hover:text-green-600'
-                                    }`}
-                                >
+                                <button onClick={() => setActiveTab('configuracoes')} className={`px-6 py-3 font-semibold transition ${activeTab === 'configuracoes' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
+                                    ⚙️ Configurações
+                                </button>
+                                <button onClick={() => { setActiveTab('contrato'); carregarTemplates(); }} className={`px-6 py-3 font-semibold transition ${activeTab === 'contrato' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
+                                    📄 Editor de Contrato
+                                </button>
+                                {/* NOVO BOTÃO: RELATÓRIO FINANCEIRO */}
+                                <button onClick={() => setActiveTab('financeiro')} className={`px-6 py-3 font-semibold transition ${activeTab === 'financeiro' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
+                                    📊 Relatório Financeiro
+                                </button>
+                                <button onClick={() => setActiveTab('vendedores')} className={`px-6 py-3 font-semibold transition ${activeTab === 'vendedores' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
                                     👥 Vendedores
                                 </button>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Conteúdo */}
-                    <main className="container mx-auto px-4 py-8">
-                        {abaAtiva === 'propostas' && (
-                            <div className="text-center py-20 bg-white rounded-xl shadow-lg">
-                                <p className="text-xl text-gray-600">
-                                    📋 Módulo de Propostas<br/>
-                                    <span className="text-sm">Cole aqui o código original do painel de propostas</span>
-                                </p>
+                        {activeTab === 'configuracoes' ? (
+                            <div className="bg-white rounded-xl shadow-lg p-6 max-w-2xl">
+                                <h2 className="text-2xl font-bold mb-6 text-gray-800">⚙️ Configurações do Sistema</h2>
+                                
+                                <div className="space-y-6">
+                                    <div className="bg-blue-50 p-6 rounded-lg">
+                                        <h3 className="font-bold text-lg mb-4 text-blue-800">💰 Configurações de Tarifa</h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Tarifa Total (R$/kWh)</label>
+                                                <input type="number" step="0.000001" value={tarifaKwh} onChange={(e) => setTarifaKwh(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">Proporção Energia</label>
+                                                    <input type="number" step="0.01" value={proporcaoEnergia} onChange={(e) => setProporcaoEnergia(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">Proporção Impostos</label>
+                                                    <input type="number" step="0.01" value={proporcaoImpostos} onChange={(e) => setProporcaoImpostos(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-green-50 p-6 rounded-lg">
+                                        <h3 className="font-bold text-lg mb-4 text-green-800">🎯 Configuração de Desconto</h3>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Desconto Percentual (%)</label>
+                                            <div className="flex items-center gap-3">
+                                                <input 
+                                                    type="number" 
+                                                    step="0.1" 
+                                                    min="0" 
+                                                    max="100"
+                                                    value={descontoPercentual} 
+                                                    onChange={(e) => setDescontoPercentual(e.target.value)} 
+                                                    className="flex-1 p-3 border border-gray-300 rounded-lg"
+                                                />
+                                                <span className="text-2xl font-bold text-green-600">%</span>
+                                            </div>
+                                            <p className="text-xs text-gray-600 mt-2">
+                                                Este percentual será aplicado no cálculo da proposta de economia
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <button onClick={salvarConfiguracoes} disabled={savingConfig} className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50">
+                                        {savingConfig ? '💾 Salvando...' : '💾 Salvar Todas as Configurações'}
+                                    </button>
+                                </div>
                             </div>
-                        )}
-                        {abaAtiva === 'vendedores' && <VendedoresGestao />}
-                    </main>
+                        ) : activeTab === 'contrato' ? (
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <div className="mb-6">
+                                    <h2 className="text-2xl font-bold text-gray-800">📄 Editor de Contrato</h2>
+                                    <p className="text-gray-600 text-sm mt-2">Personalize os textos que aparecem no contrato PDF</p>
+                                </div>
 
-                    {/* Footer */}
-                    <footer className="bg-gray-800 text-white py-6 mt-12">
-                        <div className="container mx-auto px-4 text-center">
-                            <p>&copy; 2025 OBY Energy. Todos os direitos reservados.</p>
+                                {loadingTemplates ? (
+                                    <p className="text-center text-gray-500 py-8">Carregando templates...</p>
+                                ) : templates.length === 0 ? (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                                        <h3 className="text-lg font-semibold text-yellow-800 mb-2">⚠️ Nenhum template encontrado</h3>
+                                        <p className="text-yellow-700 mb-4">A tabela <code className="bg-white px-2 py-1 rounded">contrato_templates</code> está vazia.</p>
+                                        <p className="text-sm text-yellow-600">Para criar templates, execute o SQL no Supabase:</p>
+                                        <pre className="bg-white p-3 rounded mt-2 text-xs overflow-x-auto">
+{`INSERT INTO contrato_templates (ordem, secao, texto) VALUES
+(1, 'Introdução', 'Contrato de prestação de serviços...'),
+(2, 'Cláusula 1', 'O objeto do presente contrato...'),
+(3, 'Cláusula 2', 'As condições financeiras...'),
+(4, 'Cláusula 3', 'As responsabilidades...'),
+(5, 'Cláusula 4', 'Disposições gerais...');`}
+                                        </pre>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {templates.map((template, index) => {
+                                            // Labels descritivas para cada template (CORRIGIDO)
+                                            const labels = {
+                                                1: '📝 Introdução do Contrato',
+                                                2: '📋 Cláusula 1 - Objeto do Contrato',
+                                                3: '💰 Cláusula 2 - Condições Financeiras',
+                                                4: '⚖️ Cláusula 3 - Responsabilidades',
+                                                5: '📄 Cláusula 4 - Disposições Gerais'
+                                            };
+                                            const label = template.secao || labels[template.id] || labels[index + 1] || `Seção ${index + 1}`;
+                                            
+                                            return (
+                                                <div key={template.id} className="bg-gray-50 p-4 rounded-lg">
+                                                    <label className="block font-semibold text-gray-700 mb-2">
+                                                        {label}
+                                                    </label>
+                                                    <textarea
+                                                        value={template.texto}
+                                                        onChange={(e) => atualizarTemplate(template.id, e.target.value)}
+                                                        rows="4"
+                                                        className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm"
+                                                        placeholder="Digite o texto desta seção do contrato..."
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+
+                                        <div className="flex gap-4">
+                                            <button onClick={salvarTemplates} disabled={savingTemplates} className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50">
+                                                {savingTemplates ? '💾 Salvando...' : '💾 Salvar'}
+                                            </button>
+                                            <button onClick={carregarTemplates} disabled={loadingTemplates} className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 disabled:opacity-50">
+                                                🔄 Recarregar
+                                            </button>
+                                        </div>
+
+                                        <div className="bg-blue-50 p-4 rounded-lg">
+                                            <h3 className="font-semibold text-blue-800 mb-2">📝 Variáveis Disponíveis</h3>
+                                            <p className="text-sm text-gray-700">Use estas variáveis no texto (serão substituídas automaticamente):</p>
+                                            <ul className="text-sm text-gray-600 mt-2 space-y-1">
+                                                <li><code className="bg-white px-2 py-1 rounded">[NOME]</code> - Nome do cliente</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[CPF_CNPJ]</code> - CPF ou CNPJ</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[ENDERECO]</code> - Endereço completo</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[CIDADE]</code> - Cidade</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[ESTADO]</code> - Estado (UF)</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[DATA]</code> - Data atual</li>
+                                                <li><code className="bg-white px-2 py-1 rounded">[DESCONTO]</code> - Percentual de desconto</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : activeTab === 'financeiro' ? (
+                            <FinancialReport propostas={propostas} />
+                        ) : activeTab === 'vendedores' ? (
+                            <VendedoresGestao />
+                        ) : (
+                            <>
+                                <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg p-6 text-white mb-6">
+                                    <h2 className="text-3xl font-bold mb-2">Bem-vindo ao Painel Administrativo! 👋</h2>
+                                    <p className="text-blue-100">Gerencie as propostas de energia de forma simples e eficiente</p>
+                                    <div className="mt-4 flex gap-4">
+                                        <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                                            <p className="text-sm">Total de Propostas</p>
+                                            <p className="text-2xl font-bold">{propostas.length}</p>
+                                        </div>
+                                        <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                                            <p className="text-sm">Pendentes</p>
+                                            <p className="text-2xl font-bold">{propostas.filter(p => p.status === 'pendente').length}</p>
+                                        </div>
+                                        <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                                            <p className="text-sm">Aprovadas</p>
+                                            <p className="text-2xl font-bold">{propostas.filter(p => p.status === 'aprovado').length}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-lg p-6">
+                                    <div className="mb-6 flex flex-col md:flex-row gap-4">
+                                        <input type="text" placeholder="🔍 Buscar..." value={busca} onChange={(e) => setBusca(e.target.value)} className="flex-1 p-3 border border-gray-300 rounded-lg" />
+                                        <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="p-3 border border-gray-300 rounded-lg">
+                                            <option value="todos">Todos</option>
+                                            <option value="pendente">Pendente</option>
+                                            <option value="aprovado">Aprovado</option>
+                                            <option value="reprovado">Reprovado</option>
+                                            <option value="lista_espera">Lista de Espera</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-50 border-b-2 border-gray-200">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nome</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nº Contrato</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Cidade</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Telefone</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">CPF</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Data</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {propostasFiltradas.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
+                                                            {loading ? 'Carregando...' : 'Nenhuma proposta encontrada'}
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    propostasFiltradas.map((proposta) => (
+                                                        <tr key={proposta.id} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                                {proposta.nome_completo || proposta.nome_fantasia || 'Sem nome'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm font-semibold text-blue-600">
+                                                                {proposta.numero_contrato || '-'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.email}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.cidade}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.telefone}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">{formatarData(proposta.created_at)}</td>
+                                                            <td className="px-4 py-3">
+                                                                {getStatusBadge(proposta.status || 'pendente')}
+                                                            </td>
+                                                            <td className="px-4 py-3 flex gap-2">
+                                                                <button onClick={() => {
+                                                                    console.log('📎 Proposta selecionada para anexos:', proposta);
+                                                                    console.log('📁 Arquivos disponíveis:', {
+                                                                        conta: proposta.arquivo_conta_url,
+                                                                        rg_frente: proposta.arquivo_rg_frente_url,
+                                                                        rg_verso: proposta.arquivo_rg_verso_url,
+                                                                        rg_rep1_frente: proposta.arquivo_rg_rep1_frente_url,
+                                                                        rg_rep1_verso: proposta.arquivo_rg_rep1_verso_url,
+                                                                        contrato_social: proposta.contrato_social_url
+                                                                    });
+                                                                    setPropostaAnexos(proposta);
+                                                                }} className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700" title="Ver Anexos">
+                                                                    👁️ Anexos
+                                                                </button>
+                                                                <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                                                                    📝 Editar
+                                                                </button>
+                                                                <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                                                    📄 PDF
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    {selectedProposta && (
+                        <EditPropostaModal 
+                            proposta={selectedProposta} 
+                            onClose={() => setSelectedProposta(null)} 
+                            onSave={handleSaveEdit}
+                            saving={savingProposta}
+                        />
+                    )}
+                    {propostaAnexos && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                                <div className="p-6 border-b border-gray-200">
+                                    <h2 className="text-2xl font-bold text-gray-800">📎 Anexos da Proposta</h2>
+                                    <p className="text-sm text-gray-500">Cliente: {propostaAnexos.nome_completo || propostaAnexos.nome_fantasia || 'Sem nome'}</p>
+                                    <p className="text-sm text-blue-600">Nº Contrato: {propostaAnexos.numero_contrato || 'N/A'}</p>
+                                </div>
+                                <div className="p-6 overflow-y-auto">
+                                    <div className="space-y-4">
+                                        {/* CONTA DE ENERGIA - PRIMEIRO */}
+                                        {propostaAnexos.arquivo_conta_url ? (
+                                            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                                <div>
+                                                    <p className="font-semibold text-blue-800">⚡ Conta de Energia</p>
+                                                    <p className="text-sm text-gray-600">Arquivo da conta de energia</p>
+                                                </div>
+                                                <a href={propostaAnexos.arquivo_conta_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">⚡ Conta de Energia</p>
+                                                    <p className="text-sm text-gray-400">Não enviado</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">❌ Faltando</span>
+                                            </div>
+                                        )}
+                                        
+                                        {/* DOCUMENTOS PESSOA FÍSICA */}
+                                        {propostaAnexos.arquivo_rg_frente_url ? (
+                                            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                                                <div>
+                                                    <p className="font-semibold text-green-800">🪪 RG/CNH (Frente)</p>
+                                                    <p className="text-sm text-gray-600">Documento de identidade - frente</p>
+                                                </div>
+                                                <a href={propostaAnexos.arquivo_rg_frente_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">🪪 RG/CNH (Frente)</p>
+                                                    <p className="text-sm text-gray-400">Não enviado</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">❌ Faltando</span>
+                                            </div>
+                                        )}
+                                        
+                                        {propostaAnexos.arquivo_rg_verso_url ? (
+                                            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                                                <div>
+                                                    <p className="font-semibold text-green-800">🪪 RG/CNH (Verso)</p>
+                                                    <p className="text-sm text-gray-600">Documento de identidade - verso</p>
+                                                </div>
+                                                <a href={propostaAnexos.arquivo_rg_verso_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">🪪 RG/CNH (Verso)</p>
+                                                    <p className="text-sm text-gray-400">Não enviado</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">❌ Faltando</span>
+                                            </div>
+                                        )}
+                                        
+                                        {/* DOCUMENTOS REPRESENTANTE LEGAL */}
+                                        {propostaAnexos.arquivo_rg_rep1_frente_url ? (
+                                            <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                                <div>
+                                                    <p className="font-semibold text-purple-800">👔 RG Representante Legal (Frente)</p>
+                                                    <p className="text-sm text-gray-600">Documento do representante - frente</p>
+                                                </div>
+                                                <a href={propostaAnexos.arquivo_rg_rep1_frente_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">👔 RG Representante Legal (Frente)</p>
+                                                    <p className="text-sm text-gray-400">Não enviado (opcional)</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">⚪ Opcional</span>
+                                            </div>
+                                        )}
+                                        
+                                        {propostaAnexos.arquivo_rg_rep1_verso_url ? (
+                                            <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                                <div>
+                                                    <p className="font-semibold text-purple-800">👔 RG Representante Legal (Verso)</p>
+                                                    <p className="text-sm text-gray-600">Documento do representante - verso</p>
+                                                </div>
+                                                <a href={propostaAnexos.arquivo_rg_rep1_verso_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">👔 RG Representante Legal (Verso)</p>
+                                                    <p className="text-sm text-gray-400">Não enviado (opcional)</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">⚪ Opcional</span>
+                                            </div>
+                                        )}
+                                        
+                                        {/* CONTRATO SOCIAL */}
+                                        {propostaAnexos.contrato_social_url ? (
+                                            <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                                                <div>
+                                                    <p className="font-semibold text-yellow-800">📄 Contrato Social</p>
+                                                    <p className="text-sm text-gray-600">Documento da empresa</p>
+                                                </div>
+                                                <a href={propostaAnexos.contrato_social_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
+                                                <div>
+                                                    <p className="font-semibold text-gray-500">📄 Contrato Social</p>
+                                                    <p className="text-sm text-gray-400">Não enviado (opcional para PF)</p>
+                                                </div>
+                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">⚪ Opcional</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="p-6 border-t border-gray-200 flex justify-end">
+                                    <button onClick={() => setPropostaAnexos(null)} className="px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700">
+                                        Fechar
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </footer>
+                    )}
                 </div>
             );
         }

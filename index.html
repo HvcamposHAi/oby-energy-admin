@@ -344,6 +344,7 @@
             const [propostas, setPropostas] = useState([]);
             const [loading, setLoading] = useState(false);
             const [selectedProposta, setSelectedProposta] = useState(null); 
+            const [propostaAnexos, setPropostaAnexos] = useState(null); 
             const [savingProposta, setSavingProposta] = useState(false); 
             const [filtro, setFiltro] = useState('todos');
             const [busca, setBusca] = useState('');
@@ -1047,6 +1048,9 @@
                                                                 {getStatusBadge(proposta.status || 'pendente')}
                                                             </td>
                                                             <td className="px-4 py-3 flex gap-2">
+                                                                <button onClick={() => setPropostaAnexos(proposta)} className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700" title="Ver Anexos">
+                                                                    👁️ Anexos
+                                                                </button>
                                                                 <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
                                                                     📝 Editar
                                                                 </button>
@@ -1071,6 +1075,103 @@
                             onSave={handleSaveEdit}
                             saving={savingProposta}
                         />
+                    )}
+                    {propostaAnexos && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                                <div className="p-6 border-b border-gray-200">
+                                    <h2 className="text-2xl font-bold text-gray-800">📎 Anexos da Proposta</h2>
+                                    <p className="text-sm text-gray-500">Cliente: {propostaAnexos.nome_completo || propostaAnexos.nome_fantasia || 'Sem nome'}</p>
+                                    <p className="text-sm text-blue-600">Nº Contrato: {propostaAnexos.numero_contrato || 'N/A'}</p>
+                                </div>
+                                <div className="p-6 overflow-y-auto">
+                                    <div className="space-y-4">
+                                        {propostaAnexos.arquivo_conta_url && (
+                                            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                                <div>
+                                                    <p className="font-semibold text-blue-800">⚡ Conta de Energia</p>
+                                                    <p className="text-sm text-gray-600">Arquivo da conta de energia</p>
+                                                </div>
+                                                <a href={propostaAnexos.arquivo_conta_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        )}
+                                        {propostaAnexos.arquivo_rg_frente_url && (
+                                            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                                                <div>
+                                                    <p className="font-semibold text-green-800">🪪 RG (Frente)</p>
+                                                    <p className="text-sm text-gray-600">Documento de identidade - frente</p>
+                                                </div>
+                                                <a href={propostaAnexos.arquivo_rg_frente_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        )}
+                                        {propostaAnexos.arquivo_rg_verso_url && (
+                                            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                                                <div>
+                                                    <p className="font-semibold text-green-800">🪪 RG (Verso)</p>
+                                                    <p className="text-sm text-gray-600">Documento de identidade - verso</p>
+                                                </div>
+                                                <a href={propostaAnexos.arquivo_rg_verso_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        )}
+                                        {propostaAnexos.arquivo_rg_rep1_frente_url && (
+                                            <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                                <div>
+                                                    <p className="font-semibold text-purple-800">👔 RG Representante 1 (Frente)</p>
+                                                    <p className="text-sm text-gray-600">Documento do representante legal - frente</p>
+                                                </div>
+                                                <a href={propostaAnexos.arquivo_rg_rep1_frente_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        )}
+                                        {propostaAnexos.arquivo_rg_rep1_verso_url && (
+                                            <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                                <div>
+                                                    <p className="font-semibold text-purple-800">👔 RG Representante 1 (Verso)</p>
+                                                    <p className="text-sm text-gray-600">Documento do representante legal - verso</p>
+                                                </div>
+                                                <a href={propostaAnexos.arquivo_rg_rep1_verso_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        )}
+                                        {propostaAnexos.contrato_social_url && (
+                                            <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                                                <div>
+                                                    <p className="font-semibold text-yellow-800">📄 Contrato Social</p>
+                                                    <p className="text-sm text-gray-600">Documento da empresa</p>
+                                                </div>
+                                                <a href={propostaAnexos.contrato_social_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700">
+                                                    👁️ Ver
+                                                </a>
+                                            </div>
+                                        )}
+                                        {!propostaAnexos.arquivo_conta_url && 
+                                         !propostaAnexos.arquivo_rg_frente_url && 
+                                         !propostaAnexos.arquivo_rg_verso_url && 
+                                         !propostaAnexos.arquivo_rg_rep1_frente_url && 
+                                         !propostaAnexos.arquivo_rg_rep1_verso_url && 
+                                         !propostaAnexos.contrato_social_url && (
+                                            <div className="p-8 text-center text-gray-500">
+                                                <p className="text-lg">📂 Nenhum anexo encontrado</p>
+                                                <p className="text-sm mt-2">Esta proposta não possui documentos anexados.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="p-6 border-t border-gray-200 flex justify-end">
+                                    <button onClick={() => setPropostaAnexos(null)} className="px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700">
+                                        Fechar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
             );

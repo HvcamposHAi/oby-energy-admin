@@ -1048,7 +1048,18 @@
                                                                 {getStatusBadge(proposta.status || 'pendente')}
                                                             </td>
                                                             <td className="px-4 py-3 flex gap-2">
-                                                                <button onClick={() => setPropostaAnexos(proposta)} className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700" title="Ver Anexos">
+                                                                <button onClick={() => {
+                                                                    console.log('📎 Proposta selecionada para anexos:', proposta);
+                                                                    console.log('📁 Arquivos disponíveis:', {
+                                                                        conta: proposta.arquivo_conta_url,
+                                                                        rg_frente: proposta.arquivo_rg_frente_url,
+                                                                        rg_verso: proposta.arquivo_rg_verso_url,
+                                                                        rg_rep1_frente: proposta.arquivo_rg_rep1_frente_url,
+                                                                        rg_rep1_verso: proposta.arquivo_rg_rep1_verso_url,
+                                                                        contrato_social: proposta.contrato_social_url
+                                                                    });
+                                                                    setPropostaAnexos(proposta);
+                                                                }} className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700" title="Ver Anexos">
                                                                     👁️ Anexos
                                                                 </button>
                                                                 <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
@@ -1086,6 +1097,7 @@
                                 </div>
                                 <div className="p-6 overflow-y-auto">
                                     <div className="space-y-4">
+                                        {/* CONTA DE ENERGIA - PRIMEIRO */}
                                         {propostaAnexos.arquivo_conta_url && (
                                             <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
                                                 <div>
@@ -1097,10 +1109,12 @@
                                                 </a>
                                             </div>
                                         )}
+                                        
+                                        {/* DOCUMENTOS PESSOA FÍSICA */}
                                         {propostaAnexos.arquivo_rg_frente_url && (
                                             <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
                                                 <div>
-                                                    <p className="font-semibold text-green-800">🪪 RG (Frente)</p>
+                                                    <p className="font-semibold text-green-800">🪪 RG/CNH (Frente)</p>
                                                     <p className="text-sm text-gray-600">Documento de identidade - frente</p>
                                                 </div>
                                                 <a href={propostaAnexos.arquivo_rg_frente_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
@@ -1111,7 +1125,7 @@
                                         {propostaAnexos.arquivo_rg_verso_url && (
                                             <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
                                                 <div>
-                                                    <p className="font-semibold text-green-800">🪪 RG (Verso)</p>
+                                                    <p className="font-semibold text-green-800">🪪 RG/CNH (Verso)</p>
                                                     <p className="text-sm text-gray-600">Documento de identidade - verso</p>
                                                 </div>
                                                 <a href={propostaAnexos.arquivo_rg_verso_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
@@ -1119,11 +1133,13 @@
                                                 </a>
                                             </div>
                                         )}
+                                        
+                                        {/* DOCUMENTOS REPRESENTANTE LEGAL */}
                                         {propostaAnexos.arquivo_rg_rep1_frente_url && (
                                             <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
                                                 <div>
-                                                    <p className="font-semibold text-purple-800">👔 RG Representante 1 (Frente)</p>
-                                                    <p className="text-sm text-gray-600">Documento do representante legal - frente</p>
+                                                    <p className="font-semibold text-purple-800">👔 RG Representante Legal (Frente)</p>
+                                                    <p className="text-sm text-gray-600">Documento do representante - frente</p>
                                                 </div>
                                                 <a href={propostaAnexos.arquivo_rg_rep1_frente_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
                                                     👁️ Ver
@@ -1133,14 +1149,16 @@
                                         {propostaAnexos.arquivo_rg_rep1_verso_url && (
                                             <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
                                                 <div>
-                                                    <p className="font-semibold text-purple-800">👔 RG Representante 1 (Verso)</p>
-                                                    <p className="text-sm text-gray-600">Documento do representante legal - verso</p>
+                                                    <p className="font-semibold text-purple-800">👔 RG Representante Legal (Verso)</p>
+                                                    <p className="text-sm text-gray-600">Documento do representante - verso</p>
                                                 </div>
                                                 <a href={propostaAnexos.arquivo_rg_rep1_verso_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
                                                     👁️ Ver
                                                 </a>
                                             </div>
                                         )}
+                                        
+                                        {/* CONTRATO SOCIAL */}
                                         {propostaAnexos.contrato_social_url && (
                                             <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                                                 <div>
@@ -1152,6 +1170,8 @@
                                                 </a>
                                             </div>
                                         )}
+                                        
+                                        {/* MENSAGEM QUANDO NÃO HÁ ANEXOS */}
                                         {!propostaAnexos.arquivo_conta_url && 
                                          !propostaAnexos.arquivo_rg_frente_url && 
                                          !propostaAnexos.arquivo_rg_verso_url && 

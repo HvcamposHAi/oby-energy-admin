@@ -347,6 +347,7 @@
             const [tabelaNaoExiste, setTabelaNaoExiste] = useState(false);
             const [modalAberto, setModalAberto] = useState(false);
             const [salvando, setSalvando] = useState(false);
+            const [editandoId, setEditandoId] = useState(null);
             const [formData, setFormData] = useState({
                 nome_completo: '',
                 cpf: '',
@@ -403,8 +404,14 @@
 
                 setSalvando(true);
                 try {
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/vendedores`, {
-                        method: 'POST',
+                    const url = editandoId 
+                        ? `${SUPABASE_URL}/rest/v1/vendedores?id=eq.${editandoId}`
+                        : `${SUPABASE_URL}/rest/v1/vendedores`;
+                    
+                    const method = editandoId ? 'PATCH' : 'POST';
+                    
+                    const response = await fetch(url, {
+                        method: method,
                         headers: {
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
                             'apikey': SUPABASE_KEY,
@@ -415,8 +422,9 @@
                     });
 
                     if (response.ok) {
-                        alert('✅ Vendedor cadastrado com sucesso!');
+                        alert(editandoId ? '✅ Vendedor atualizado com sucesso!' : '✅ Vendedor cadastrado com sucesso!');
                         setModalAberto(false);
+                        setEditandoId(null);
                         setFormData({
                             nome_completo: '',
                             cpf: '',
@@ -436,6 +444,51 @@
                     alert('❌ Erro ao salvar vendedor: ' + error.message);
                 } finally {
                     setSalvando(false);
+                }
+            };
+
+            const abrirEdicao = (vendedor) => {
+                setEditandoId(vendedor.id);
+                setFormData({
+                    nome_completo: vendedor.nome_completo || '',
+                    cpf: vendedor.cpf || '',
+                    email: vendedor.email || '',
+                    telefone: vendedor.telefone || '',
+                    celular: vendedor.celular || '',
+                    codigo_vendedor: vendedor.codigo_vendedor || '',
+                    comissao_percentual: vendedor.comissao_percentual || '5.00',
+                    status: vendedor.status || 'ativo'
+                });
+                setModalAberto(true);
+            };
+
+            const alternarStatus = async (vendedor) => {
+                const novoStatus = vendedor.status === 'ativo' ? 'inativo' : 'ativo';
+                const confirmacao = confirm(`Deseja realmente ${novoStatus === 'inativo' ? 'INATIVAR' : 'ATIVAR'} o vendedor ${vendedor.nome_completo}?`);
+                
+                if (!confirmacao) return;
+
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/vendedores?id=eq.${vendedor.id}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify({ status: novoStatus })
+                    });
+
+                    if (response.ok) {
+                        alert(`✅ Vendedor ${novoStatus === 'inativo' ? 'inativado' : 'ativado'} com sucesso!`);
+                        carregarVendedores();
+                    } else {
+                        const error = await response.json();
+                        alert(`❌ Erro ao alterar status: ${error.message || 'Erro desconhecido'}`);
+                    }
+                } catch (error) {
+                    alert('❌ Erro ao alterar status: ' + error.message);
                 }
             };
 
@@ -526,6 +579,7 @@
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telefone</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Comissão</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -555,6 +609,28 @@
                                                     {vendedor.status === 'ativo' ? '✅ Ativo' : '⏸️ Inativo'}
                                                 </span>
                                             </td>
+                                            <td className="px-4 py-3 text-sm">
+                                                <div className="flex gap-2 justify-center">
+                                                    <button
+                                                        onClick={() => abrirEdicao(vendedor)}
+                                                        className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-semibold"
+                                                        title="Editar vendedor"
+                                                    >
+                                                        ✏️ Editar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => alternarStatus(vendedor)}
+                                                        className={`px-3 py-1 text-white rounded text-xs font-semibold ${
+                                                            vendedor.status === 'ativo'
+                                                                ? 'bg-red-600 hover:bg-red-700'
+                                                                : 'bg-green-600 hover:bg-green-700'
+                                                        }`}
+                                                        title={vendedor.status === 'ativo' ? 'Inativar vendedor' : 'Ativar vendedor'}
+                                                    >
+                                                        {vendedor.status === 'ativo' ? '🚫 Inativar' : '✅ Ativar'}
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -562,14 +638,19 @@
                         </div>
                     )}
 
-                    {/* MODAL DE CADASTRO DE VENDEDOR */}
+                    {/* MODAL DE CADASTRO/EDIÇÃO DE VENDEDOR */}
                     {modalAberto && (
                         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                             <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                                 <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-                                    <h3 className="text-xl font-bold text-gray-800">➕ Cadastrar Novo Vendedor</h3>
+                                    <h3 className="text-xl font-bold text-gray-800">
+                                        {editandoId ? '✏️ Editar Vendedor' : '➕ Cadastrar Novo Vendedor'}
+                                    </h3>
                                     <button 
-                                        onClick={() => setModalAberto(false)} 
+                                        onClick={() => {
+                                            setModalAberto(false);
+                                            setEditandoId(null);
+                                        }} 
                                         className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
                                     >
                                         ×
@@ -704,7 +785,10 @@
                                     <div className="flex gap-4 mt-6 pt-6 border-t">
                                         <button
                                             type="button"
-                                            onClick={() => setModalAberto(false)}
+                                            onClick={() => {
+                                                setModalAberto(false);
+                                                setEditandoId(null);
+                                            }}
                                             className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
                                         >
                                             Cancelar
@@ -714,7 +798,7 @@
                                             disabled={salvando}
                                             className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50"
                                         >
-                                            {salvando ? '⏳ Salvando...' : '✅ Salvar Vendedor'}
+                                            {salvando ? '⏳ Salvando...' : editandoId ? '✅ Atualizar Vendedor' : '✅ Salvar Vendedor'}
                                         </button>
                                     </div>
                                 </form>

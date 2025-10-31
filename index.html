@@ -1129,6 +1129,74 @@
                 doc.save(`contrato_${nomeCompleto.replace(/\s+/g, '_')}.pdf`);
             };
 
+            const handleSubstituirAnexo = async (e, propostaId, campo, nomeCampo) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // Validar tamanho (máx 10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('❌ Arquivo muito grande! Tamanho máximo: 10MB');
+                    return;
+                }
+
+                const confirmar = confirm(`Deseja substituir o arquivo "${nomeCampo}"?\n\nArquivo: ${file.name}\nTamanho: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+                if (!confirmar) return;
+
+                try {
+                    // Fazer upload para o Supabase Storage
+                    const timestamp = Date.now();
+                    const fileName = `${nomeCampo}_${timestamp}_${file.name}`;
+                    
+                    const uploadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/propostas/${fileName}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY,
+                            'Content-Type': file.type
+                        },
+                        body: file
+                    });
+
+                    if (!uploadResponse.ok) {
+                        throw new Error('Erro ao fazer upload do arquivo');
+                    }
+
+                    const fileUrl = `${SUPABASE_URL}/storage/v1/object/public/propostas/${fileName}`;
+
+                    // Atualizar banco de dados
+                    const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify({ [campo]: fileUrl })
+                    });
+
+                    if (!updateResponse.ok) {
+                        throw new Error('Erro ao atualizar banco de dados');
+                    }
+
+                    alert('✅ Arquivo substituído com sucesso!');
+                    
+                    // Atualizar a lista de propostas
+                    carregarPropostas();
+                    
+                    // Atualizar o modal
+                    const updatedData = await updateResponse.json();
+                    setPropostaAnexos(updatedData[0]);
+
+                } catch (error) {
+                    alert('❌ Erro ao substituir arquivo: ' + error.message);
+                    console.error('Erro:', error);
+                }
+
+                // Limpar o input
+                e.target.value = '';
+            };
+
             const getStatusBadge = (status) => {
                 const configs = {
                     'pendente': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '🟡 Pendente' },
@@ -1445,45 +1513,89 @@
                                 </div>
                                 <div className="p-6 overflow-y-auto">
                                     <div className="space-y-4">
-                                        {propostaAnexos.arquivo_conta_url ? (
-                                            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                                <div>
-                                                    <p className="font-semibold text-blue-800">⚡ Conta de Energia</p>
-                                                </div>
-                                                <a href={propostaAnexos.arquivo_conta_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                                    👁️ Ver
-                                                </a>
+                                        {/* Conta de Energia */}
+                                        <div className={`flex items-center justify-between p-4 rounded-lg border ${propostaAnexos.arquivo_conta_url ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
+                                            <div>
+                                                <p className={`font-semibold ${propostaAnexos.arquivo_conta_url ? 'text-blue-800' : 'text-gray-500'}`}>⚡ Conta de Energia</p>
+                                                {!propostaAnexos.arquivo_conta_url && <p className="text-sm text-gray-400">Não enviado</p>}
                                             </div>
-                                        ) : (
-                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
-                                                <div>
-                                                    <p className="font-semibold text-gray-500">⚡ Conta de Energia</p>
-                                                    <p className="text-sm text-gray-400">Não enviado</p>
-                                                </div>
+                                            <div className="flex gap-2">
+                                                {propostaAnexos.arquivo_conta_url && (
+                                                    <a href={propostaAnexos.arquivo_conta_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-semibold">
+                                                        👁️ Ver
+                                                    </a>
+                                                )}
+                                                <button 
+                                                    onClick={() => document.getElementById('upload-conta').click()} 
+                                                    className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm font-semibold"
+                                                >
+                                                    📤 {propostaAnexos.arquivo_conta_url ? 'Substituir' : 'Enviar'}
+                                                </button>
+                                                <input 
+                                                    id="upload-conta" 
+                                                    type="file" 
+                                                    accept="image/*,application/pdf" 
+                                                    className="hidden" 
+                                                    onChange={(e) => handleSubstituirAnexo(e, propostaAnexos.id, 'arquivo_conta_url', 'conta')}
+                                                />
                                             </div>
-                                        )}
+                                        </div>
                                         
-                                        {propostaAnexos.rg_frente_url && (
-                                            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
-                                                <div>
-                                                    <p className="font-semibold text-green-800">🪪 RG/CNH (Frente)</p>
-                                                </div>
-                                                <a href={propostaAnexos.rg_frente_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-                                                    👁️ Ver
-                                                </a>
+                                        {/* RG/CNH Frente */}
+                                        <div className={`flex items-center justify-between p-4 rounded-lg border ${propostaAnexos.rg_frente_url ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
+                                            <div>
+                                                <p className={`font-semibold ${propostaAnexos.rg_frente_url ? 'text-green-800' : 'text-gray-500'}`}>🪪 RG/CNH (Frente)</p>
+                                                {!propostaAnexos.rg_frente_url && <p className="text-sm text-gray-400">Não enviado</p>}
                                             </div>
-                                        )}
+                                            <div className="flex gap-2">
+                                                {propostaAnexos.rg_frente_url && (
+                                                    <a href={propostaAnexos.rg_frente_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold">
+                                                        👁️ Ver
+                                                    </a>
+                                                )}
+                                                <button 
+                                                    onClick={() => document.getElementById('upload-rg-frente').click()} 
+                                                    className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm font-semibold"
+                                                >
+                                                    📤 {propostaAnexos.rg_frente_url ? 'Substituir' : 'Enviar'}
+                                                </button>
+                                                <input 
+                                                    id="upload-rg-frente" 
+                                                    type="file" 
+                                                    accept="image/*,application/pdf" 
+                                                    className="hidden" 
+                                                    onChange={(e) => handleSubstituirAnexo(e, propostaAnexos.id, 'rg_frente_url', 'rg_frente')}
+                                                />
+                                            </div>
+                                        </div>
                                         
-                                        {propostaAnexos.rg_verso_url && (
-                                            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
-                                                <div>
-                                                    <p className="font-semibold text-green-800">🪪 RG/CNH (Verso)</p>
-                                                </div>
-                                                <a href={propostaAnexos.rg_verso_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                                                    👁️ Ver
-                                                </a>
+                                        {/* RG/CNH Verso */}
+                                        <div className={`flex items-center justify-between p-4 rounded-lg border ${propostaAnexos.rg_verso_url ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
+                                            <div>
+                                                <p className={`font-semibold ${propostaAnexos.rg_verso_url ? 'text-green-800' : 'text-gray-500'}`}>🪪 RG/CNH (Verso)</p>
+                                                {!propostaAnexos.rg_verso_url && <p className="text-sm text-gray-400">Não enviado</p>}
                                             </div>
-                                        )}
+                                            <div className="flex gap-2">
+                                                {propostaAnexos.rg_verso_url && (
+                                                    <a href={propostaAnexos.rg_verso_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold">
+                                                        👁️ Ver
+                                                    </a>
+                                                )}
+                                                <button 
+                                                    onClick={() => document.getElementById('upload-rg-verso').click()} 
+                                                    className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm font-semibold"
+                                                >
+                                                    📤 {propostaAnexos.rg_verso_url ? 'Substituir' : 'Enviar'}
+                                                </button>
+                                                <input 
+                                                    id="upload-rg-verso" 
+                                                    type="file" 
+                                                    accept="image/*,application/pdf" 
+                                                    className="hidden" 
+                                                    onChange={(e) => handleSubstituirAnexo(e, propostaAnexos.id, 'rg_verso_url', 'rg_verso')}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="p-6 border-t border-gray-200 flex justify-end">

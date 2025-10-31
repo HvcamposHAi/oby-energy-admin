@@ -146,6 +146,38 @@
 
             const formatarData = (dataISO) => new Date(dataISO).toLocaleDateString('pt-BR');
 
+            const gerarNumeroContrato = async (proposta) => {
+                if (proposta.numero_contrato && proposta.numero_contrato !== '-') {
+                    alert('Esta proposta já tem número de contrato!');
+                    return;
+                }
+                
+                const anoAtual = new Date().getFullYear();
+                const idCurto = String(proposta.id).slice(-5);
+                const numeroContrato = `OBY-${anoAtual}-${idCurto}`;
+                
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${proposta.id}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ numero_contrato: numeroContrato })
+                    });
+                    
+                    if (response.ok) {
+                        alert(`✅ Número gerado: ${numeroContrato}`);
+                        carregarPropostas();
+                    } else {
+                        alert('❌ Erro ao gerar número de contrato');
+                    }
+                } catch (error) {
+                    alert('❌ Erro ao gerar número de contrato: ' + error.message);
+                }
+            };
+
             const gerarContratoPDF = (proposta) => {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
@@ -239,6 +271,9 @@
                                                         <td className="px-4 py-3 flex gap-2">
                                                             <button onClick={() => setPropostaAnexos(proposta)} className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700">👁️ Anexos</button>
                                                             <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">📝 Editar</button>
+                                                            {(!proposta.numero_contrato || proposta.numero_contrato === '-') && (
+                                                                <button onClick={() => gerarNumeroContrato(proposta)} className="px-3 py-1 bg-orange-600 text-white text-xs rounded hover:bg-orange-700">🔢 Gerar Nº</button>
+                                                            )}
                                                             <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">📄 PDF</button>
                                                         </td>
                                                     </tr>

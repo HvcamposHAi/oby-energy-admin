@@ -104,10 +104,15 @@
             const carregarPropostas = async () => {
                 setLoading(true);
                 try {
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?select=*&order=data_criacao.desc`, {headers: {'Authorization': `Bearer ${SUPABASE_KEY}`, 'apikey': SUPABASE_KEY}});
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?select=*,vendedores(nome_completo)&order=data_criacao.desc`, {headers: {'Authorization': `Bearer ${SUPABASE_KEY}`, 'apikey': SUPABASE_KEY}});
                     if (!response.ok) throw new Error(`Erro ${response.status}`);
                     const data = await response.json();
-                    setPropostas(data.map(p => ({...p, showMenu: false, updating: false})));
+                    setPropostas(data.map(p => ({
+                        ...p, 
+                        vendedor: p.vendedores?.nome_completo || p.vendedor || '-',
+                        showMenu: false, 
+                        updating: false
+                    })));
                 } catch (error) {
                     console.error('❌ Erro ao carregar propostas:', error);
                     setPropostas([]);

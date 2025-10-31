@@ -1143,22 +1143,27 @@
                 if (!confirmar) return;
 
                 try {
-                    // Fazer upload para o Supabase Storage
+                    // Criar FormData para upload
                     const timestamp = Date.now();
-                    const fileName = `${nomeCampo}_${timestamp}_${file.name}`;
+                    const fileExtension = file.name.split('.').pop();
+                    const fileName = `${nomeCampo}_${timestamp}.${fileExtension}`;
                     
+                    // Upload usando FormData
+                    const formData = new FormData();
+                    formData.append('file', file);
+
                     const uploadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/propostas/${fileName}`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'apikey': SUPABASE_KEY,
-                            'Content-Type': file.type
+                            'apikey': SUPABASE_KEY
                         },
-                        body: file
+                        body: formData
                     });
 
                     if (!uploadResponse.ok) {
-                        throw new Error('Erro ao fazer upload do arquivo');
+                        const errorData = await uploadResponse.json();
+                        throw new Error(errorData.message || 'Erro ao fazer upload do arquivo');
                     }
 
                     const fileUrl = `${SUPABASE_URL}/storage/v1/object/public/propostas/${fileName}`;
@@ -1190,7 +1195,7 @@
 
                 } catch (error) {
                     alert('❌ Erro ao substituir arquivo: ' + error.message);
-                    console.error('Erro:', error);
+                    console.error('Erro completo:', error);
                 }
 
                 // Limpar o input

@@ -16,22 +16,20 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Configurações do Supabase (MANTIDAS)
+        // Configurações do Supabase
         const SUPABASE_URL = 'https://uuaqmwnfjopgjmjjchmw.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1YXFtd25mam9wZ2ptampjaG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1OTEyNzUsImV4cCI6MjA3NjE2NzI3NX0.9ITSBR9SNoZKgvF1AuW4OsL4b8Du5NAXttQpi7B3MO8';
 
-        // Credenciais de Admin (MANTIDAS)
+        // Credenciais de Admin
         const ADMIN_USER = 'admin';
         const ADMIN_PASS = 'oby2025';
 
-        // --- NOVO COMPONENTE: RELATÓRIO FINANCEIRO ---
+        // --- COMPONENTE: RELATÓRIO FINANCEIRO ---
         function FinancialReport({ propostas }) {
             
-            // Filtra apenas propostas 'aprovado' para o relatório de sucesso
             const propostasAprovadas = propostas.filter(p => p.status === 'aprovado' && p.simulacao_economia_mensal > 0);
 
             const formatarMoeda = (valor) => {
-                // Converte para float antes de formatar
                 const num = parseFloat(valor); 
                 if (isNaN(num)) return 'R$ 0,00';
                 return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -45,10 +43,11 @@
                 ];
 
                 const linhas = propostasAprovadas.map(p => {
+                    const nomeCliente = p.nome && p.sobrenome ? `${p.nome} ${p.sobrenome}` : p.nome_fantasia || 'Sem nome';
                     return [
                         `"${p.numero_contrato || 'N/A'}"`,
                         `"${p.vendedor || 'Sem Vendedor'}"`,
-                        `"${p.nome_completo || p.nome_fantasia || 'Sem nome'}"`,
+                        `"${nomeCliente}"`,
                         `"${p.email || ''}"`,
                         `"${p.cidade || ''}"`,
                         `"${p.consumo_kwh || 0}"`,
@@ -133,20 +132,23 @@
                                         </td>
                                     </tr>
                                 ) : (
-                                    propostasAprovadas.map(p => (
-                                        <tr key={p.id}>
-                                            <td className="px-4 py-3 text-sm font-medium text-blue-600">{p.numero_contrato || '-'}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-900">
-                                                {p.nome_completo || p.nome_fantasia || 'Sem nome'}
-                                                <div className="text-xs text-gray-500">Vendedor: {p.vendedor || 'N/A'}</div>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.consumo_kwh || 0} kWh</td>
-                                            <td className="px-4 py-3 text-sm text-right text-red-600 font-semibold">{formatarMoeda(p.simulacao_conta_atual)}</td>
-                                            <td className="px-4 py-3 text-sm text-right text-green-600 font-semibold">{formatarMoeda(p.simulacao_conta_nova)}</td>
-                                            <td className="px-4 py-3 text-sm text-right text-gray-600">{p.desconto_aplicado || 0}%</td>
-                                            <td className="px-4 py-3 text-sm text-right font-bold text-green-800">{formatarMoeda(p.simulacao_economia_mensal)}</td>
-                                        </tr>
-                                    ))
+                                    propostasAprovadas.map(p => {
+                                        const nomeCliente = p.nome && p.sobrenome ? `${p.nome} ${p.sobrenome}` : p.nome_fantasia || 'Sem nome';
+                                        return (
+                                            <tr key={p.id}>
+                                                <td className="px-4 py-3 text-sm font-medium text-blue-600">{p.numero_contrato || '-'}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">
+                                                    {nomeCliente}
+                                                    <div className="text-xs text-gray-500">Vendedor: {p.vendedor || 'N/A'}</div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-right text-gray-600">{p.consumo_kwh || 0} kWh</td>
+                                                <td className="px-4 py-3 text-sm text-right text-red-600 font-semibold">{formatarMoeda(p.simulacao_conta_atual)}</td>
+                                                <td className="px-4 py-3 text-sm text-right text-green-600 font-semibold">{formatarMoeda(p.simulacao_conta_nova)}</td>
+                                                <td className="px-4 py-3 text-sm text-right text-gray-600">{p.desconto_aplicado || 0}%</td>
+                                                <td className="px-4 py-3 text-sm text-right font-bold text-green-800">{formatarMoeda(p.simulacao_economia_mensal)}</td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
@@ -155,11 +157,11 @@
             );
         }
 
-        // --- COMPONENTE DO MODAL (MANTIDO) ---
+        // --- COMPONENTE DO MODAL DE EDIÇÃO ---
         function EditPropostaModal({ proposta, onClose, onSave, saving }) {
             
             const editableColumns = [
-                'nome_completo', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
+                'nome', 'sobrenome', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
                 'cpf', 'cnpj', 'logradouro', 'numero_endereco', 'complemento', 'consumo_kwh', 
                 'distribuidora_energia', 'status', 'tipo_pessoa', 'numero_instalacao', 
                 'tipo_conexao', 'vendedor' 
@@ -167,7 +169,8 @@
 
             const [formData, setFormData] = useState({
                 ...proposta,
-                nome_completo: proposta.nome_completo || proposta.nome_fantasia || '',
+                nome: proposta.nome || '',
+                sobrenome: proposta.sobrenome || '',
                 cpf: proposta.cpf || '',
                 cnpj: proposta.cnpj || '',
                 logradouro: proposta.logradouro || '',
@@ -175,7 +178,7 @@
                 complemento: proposta.complemento || '',
                 consumo_kwh: proposta.consumo_kwh || 0,
                 distribuidora_energia: proposta.distribuidora_energia || '',
-                vendedor: proposta.vendedor || '' // << CAMPO VENDEDOR INSERIDO
+                vendedor: proposta.vendedor || ''
             });
 
             const handleChange = (e) => {
@@ -186,12 +189,10 @@
             const handleSave = () => {
                 const dataToSave = { id: formData.id };
                 
-                // Gerar número do contrato se não existir (últimos 5 caracteres do ID)
                 if (!formData.numero_contrato || formData.numero_contrato === '-') {
                     const anoAtual = new Date().getFullYear();
-                    const idCurto = String(formData.id).slice(-5); // Pega últimos 5 caracteres
+                    const idCurto = String(formData.id).slice(-5);
                     dataToSave.numero_contrato = `OBY-${anoAtual}-${idCurto}`;
-                    console.log('📋 Número de contrato gerado automaticamente:', dataToSave.numero_contrato);
                 }
                 
                 editableColumns.forEach(column => {
@@ -200,11 +201,7 @@
                         if (column === 'consumo_kwh') {
                             value = Number(value);
                         }
-                        if (column === 'nome_fantasia') {
-                            dataToSave[column] = formData.nome_completo;
-                        } else {
-                            dataToSave[column] = value;
-                        }
+                        dataToSave[column] = value;
                     }
                 });
                 
@@ -223,7 +220,7 @@
                         </div>
 
                         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
-                            {/* Informações do Contrato - Não Editável */}
+                            {/* Informações do Contrato */}
                             <div className="md:col-span-2 bg-gray-100 p-4 rounded-lg border-l-4 border-gray-400">
                                 <h3 className="font-bold text-lg mb-3 text-gray-700">Detalhes de Identificação</h3>
                                 <div className="space-y-3">
@@ -234,14 +231,24 @@
                                 </div>
                             </div>
 
-                            {/* Dados Pessoais (COM CAMPO VENDEDOR INSERIDO) */}
+                            {/* Dados Pessoais */}
                             <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
                                 <h3 className="font-bold text-lg mb-4 text-blue-800">Dados Pessoais</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className={labelClass}>Nome Completo / Fantasia</label>
-                                        <input type="text" name="nome_completo" value={formData.nome_completo} onChange={handleChange} className={inputClass} />
+                                        <label className={labelClass}>Nome</label>
+                                        <input type="text" name="nome" value={formData.nome} onChange={handleChange} className={inputClass} />
                                     </div>
+                                    <div>
+                                        <label className={labelClass}>Sobrenome</label>
+                                        <input type="text" name="sobrenome" value={formData.sobrenome} onChange={handleChange} className={inputClass} />
+                                    </div>
+                                    {formData.tipo_pessoa === 'juridica' && (
+                                        <div>
+                                            <label className={labelClass}>Nome Fantasia</label>
+                                            <input type="text" name="nome_fantasia" value={formData.nome_fantasia || ''} onChange={handleChange} className={inputClass} />
+                                        </div>
+                                    )}
                                     <div>
                                         <label className={labelClass}>Email</label>
                                         <input type="email" name="email" value={formData.email || ''} onChange={handleChange} className={inputClass} />
@@ -260,12 +267,10 @@
                                             className={inputClass} 
                                         />
                                     </div>
-                                    {/* NOVO CAMPO VENDEDOR - POSICIONADO CORRETAMENTE */}
                                     <div>
                                         <label className={labelClass}>Vendedor</label>
                                         <input type="text" name="vendedor" value={formData.vendedor || ''} onChange={handleChange} className={inputClass} />
                                     </div>
-                                    {/* CAMPO STATUS - ADICIONADO */}
                                     <div>
                                         <label className={labelClass}>Status da Proposta</label>
                                         <select name="status" value={formData.status || 'pendente'} onChange={handleChange} className={inputClass}>
@@ -278,7 +283,7 @@
                                 </div>
                             </div>
 
-                            {/* Dados de Endereço e Instalação (MANTIDOS CORRIGIDOS) */}
+                            {/* Dados de Endereço e Instalação */}
                             <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
                                 <h3 className="font-bold text-lg mb-4 text-green-800">Endereço e Instalação</h3>
                                 <div className="space-y-4">
@@ -336,8 +341,6 @@
             );
         }
 
-        // --- COMPONENTE PRINCIPAL: ADMIN PANEL ---
-
         // --- COMPONENTE: GESTÃO DE VENDEDORES ---
         function VendedoresGestao() {
             const [vendedores, setVendedores] = useState([]);
@@ -374,7 +377,6 @@
                     });
                     
                     if (response.status === 404) {
-                        // Tabela não existe - isso é esperado antes de executar o SQL
                         setTabelaNaoExiste(true);
                         setVendedores([]);
                         return;
@@ -386,7 +388,7 @@
                         setTabelaNaoExiste(false);
                     }
                 } catch (error) {
-                    console.log('ℹ️ Tabela de vendedores ainda não foi criada. Execute o script SQL.');
+                    console.log('ℹ️ Tabela de vendedores ainda não foi criada.');
                     setTabelaNaoExiste(true);
                 } finally {
                     setLoading(false);
@@ -396,7 +398,6 @@
             const salvarVendedor = async (e) => {
                 e.preventDefault();
                 
-                // Validações básicas
                 if (!formData.nome_completo || !formData.cpf || !formData.email || !formData.telefone) {
                     alert('❌ Preencha todos os campos obrigatórios!');
                     return;
@@ -564,9 +565,6 @@
                     ) : tabelaNaoExiste || vendedoresFiltrados.length === 0 ? (
                         <div className="text-center py-8 bg-gray-50 rounded-lg">
                             <p className="text-gray-600 mb-2">📭 Nenhum vendedor encontrado</p>
-                            <p className="text-sm text-gray-500">
-                                Execute o script SQL para criar a tabela de vendedores
-                            </p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -614,7 +612,6 @@
                                                     <button
                                                         onClick={() => abrirEdicao(vendedor)}
                                                         className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-semibold"
-                                                        title="Editar vendedor"
                                                     >
                                                         ✏️ Editar
                                                     </button>
@@ -625,7 +622,6 @@
                                                                 ? 'bg-red-600 hover:bg-red-700'
                                                                 : 'bg-green-600 hover:bg-green-700'
                                                         }`}
-                                                        title={vendedor.status === 'ativo' ? 'Inativar vendedor' : 'Ativar vendedor'}
                                                     >
                                                         {vendedor.status === 'ativo' ? '🚫 Inativar' : '✅ Ativar'}
                                                     </button>
@@ -638,7 +634,7 @@
                         </div>
                     )}
 
-                    {/* MODAL DE CADASTRO/EDIÇÃO DE VENDEDOR */}
+                    {/* MODAL DE CADASTRO/EDIÇÃO */}
                     {modalAberto && (
                         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                             <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -659,7 +655,6 @@
 
                                 <form onSubmit={salvarVendedor} className="p-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {/* Nome Completo */}
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 👤 Nome Completo <span className="text-red-500">*</span>
@@ -670,11 +665,9 @@
                                                 value={formData.nome_completo}
                                                 onChange={(e) => setFormData({...formData, nome_completo: e.target.value})}
                                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                                placeholder="Digite o nome completo"
                                             />
                                         </div>
 
-                                        {/* CPF */}
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 🪪 CPF <span className="text-red-500">*</span>
@@ -685,12 +678,10 @@
                                                 value={formData.cpf}
                                                 onChange={(e) => setFormData({...formData, cpf: e.target.value})}
                                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                                placeholder="000.000.000-00"
                                                 maxLength="14"
                                             />
                                         </div>
 
-                                        {/* Email */}
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 📧 Email <span className="text-red-500">*</span>
@@ -701,11 +692,9 @@
                                                 value={formData.email}
                                                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                                placeholder="vendedor@obyenergy.com.br"
                                             />
                                         </div>
 
-                                        {/* Telefone */}
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 📞 Telefone <span className="text-red-500">*</span>
@@ -716,11 +705,9 @@
                                                 value={formData.telefone}
                                                 onChange={(e) => setFormData({...formData, telefone: e.target.value})}
                                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                                placeholder="(41) 99999-9999"
                                             />
                                         </div>
 
-                                        {/* Celular */}
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 📱 Celular (Opcional)
@@ -730,11 +717,9 @@
                                                 value={formData.celular}
                                                 onChange={(e) => setFormData({...formData, celular: e.target.value})}
                                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                                placeholder="(41) 98888-8888"
                                             />
                                         </div>
 
-                                        {/* Código do Vendedor */}
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 🔢 Código do Vendedor
@@ -744,11 +729,9 @@
                                                 value={formData.codigo_vendedor}
                                                 onChange={(e) => setFormData({...formData, codigo_vendedor: e.target.value.toUpperCase()})}
                                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                                placeholder="VEND001"
                                             />
                                         </div>
 
-                                        {/* Comissão */}
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 💰 Comissão (%)
@@ -764,7 +747,6 @@
                                             />
                                         </div>
 
-                                        {/* Status */}
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 📊 Status
@@ -776,12 +758,10 @@
                                             >
                                                 <option value="ativo">✅ Ativo</option>
                                                 <option value="inativo">⏸️ Inativo</option>
-                                                <option value="suspenso">🚫 Suspenso</option>
                                             </select>
                                         </div>
                                     </div>
 
-                                    {/* Botões */}
                                     <div className="flex gap-4 mt-6 pt-6 border-t">
                                         <button
                                             type="button"
@@ -809,6 +789,7 @@
             );
         }
 
+        // --- COMPONENTE PRINCIPAL: ADMIN PANEL ---
         function AdminPanel() {
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [username, setUsername] = useState('');
@@ -830,8 +811,6 @@
             const [proporcaoImpostosId, setProporcaoImpostosId] = useState(null);
             const [descontoId, setDescontoId] = useState(null);
             const [savingConfig, setSavingConfig] = useState(false);
-            
-            // Estados para editor de contrato
             const [templates, setTemplates] = useState([]);
             const [loadingTemplates, setLoadingTemplates] = useState(false);
             const [savingTemplates, setSavingTemplates] = useState(false);
@@ -843,16 +822,6 @@
                     carregarPropostas();
                     carregarConfiguracoes();
                 }
-            }, []);
-
-            useEffect(() => {
-                const handleClickOutside = (event) => {
-                    if (!event.target.closest('button')) {
-                        setPropostas(prev => prev.map(p => ({...p, showMenu: false})));
-                    }
-                };
-                document.addEventListener('click', handleClickOutside);
-                return () => document.removeEventListener('click', handleClickOutside);
             }, []);
 
             const handleLogin = (e) => {
@@ -877,7 +846,6 @@
             const carregarPropostas = async () => {
                 setLoading(true);
                 try {
-                    console.log('🔍 Tentando carregar propostas...');
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?select=*&order=data_criacao.desc`, {
                         headers: {
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
@@ -885,43 +853,31 @@
                         }
                     });
                     
-                    console.log('📡 Status da resposta:', response.status);
-                    
                     if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error('❌ Erro na resposta:', errorText);
-                        throw new Error(`Erro ${response.status}: ${errorText}`);
+                        throw new Error(`Erro ${response.status}`);
                     }
                     
                     const data = await response.json();
-                    console.log('✅ Propostas carregadas:', data.length);
-                    console.log('📊 Primeira proposta:', data[0]);
                     setPropostas(data.map(p => ({...p, showMenu: false, updating: false})));
                 } catch (error) {
                     console.error('❌ Erro ao carregar propostas:', error);
-                    alert('Erro ao carregar propostas: ' + error.message);
                     setPropostas([]);
                 } finally {
                     setLoading(false);
                 }
             };
 
-            // Funções de Edição 
             const handleEditClick = (proposta) => {
                 setSelectedProposta(proposta);
             };
 
             const handleSaveEdit = async (dataToSave) => {
                 setSavingProposta(true);
-                console.log('🔄 Iniciando edição de proposta...', dataToSave);
                 
-                // Extrai o ID para usar no filtro e cria o payload excluindo o ID
                 const propostaId = dataToSave.id;
-                // Exclui o ID e cria o objeto de payload a ser enviado para o Supabase
                 const { id, ...payloadForSupabase } = dataToSave; 
                 
                 try {
-                    // O filtro usa o ID (UUID)
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
                         method: 'PATCH',
                         headers: {
@@ -930,32 +886,26 @@
                             'Content-Type': 'application/json',
                             'Prefer': 'return=representation'
                         },
-                        // Envia o payload que não contém o ID, garantindo a cirurgia no JSON
                         body: JSON.stringify(payloadForSupabase)
                     });
 
                     if (response.ok) {
                         const data = await response.json();
-                        console.log('✅ Proposta atualizada com sucesso!', data);
-                        // Atualiza a proposta na lista
                         setPropostas(prev => prev.map(p => 
                             p.id === propostaId ? {...data[0], showMenu: false, updating: false} : p
                         ));
-                        setSelectedProposta(null); // Fecha o modal
+                        setSelectedProposta(null);
                         alert('✅ Proposta atualizada com sucesso!');
                     } else {
                         const errorText = await response.text();
-                        console.error('❌ Erro ao salvar proposta:', errorText);
                         alert('❌ Erro ao salvar proposta: ' + errorText);
                     }
                 } catch (error) {
-                    console.error('❌ Erro ao salvar proposta:', error);
                     alert('Erro inesperado ao salvar proposta.');
                 } finally {
                     setSavingProposta(false);
                 }
             };
-
 
             const carregarConfiguracoes = async () => {
                 try {
@@ -992,7 +942,6 @@
                 }
             };
 
-            // Carregar templates do contrato
             const carregarTemplates = async () => {
                 setLoadingTemplates(true);
                 try {
@@ -1011,7 +960,6 @@
                 }
             };
 
-            // Salvar templates do contrato
             const salvarTemplates = async () => {
                 setSavingTemplates(true);
                 try {
@@ -1031,8 +979,7 @@
                     }
                     alert('✅ Templates salvos com sucesso!');
                 } catch (error) {
-                    console.error('Erro ao salvar templates:', error);
-                    alert('Erro ao salvar templates. Tente novamente.');
+                    alert('Erro ao salvar templates.');
                 } finally {
                     setSavingTemplates(false);
                 }
@@ -1047,9 +994,6 @@
             const salvarConfiguracoes = async () => {
                 setSavingConfig(true);
                 try {
-                    console.log('💾 Salvando configurações...');
-                    
-                    // 1. Salvar TARIFA
                     if (tarifaId) {
                         await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${tarifaId}`, {
                             method: 'PATCH',
@@ -1058,28 +1002,10 @@
                                 'apikey': SUPABASE_KEY,
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({
-                                valor: String(tarifaKwh)
-                            })
-                        });
-                        console.log('✅ Tarifa salva:', tarifaKwh);
-                    } else {
-                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                                'apikey': SUPABASE_KEY,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                chave: 'tarifa_kwh',
-                                valor: String(tarifaKwh),
-                                descricao: 'Tarifa por kWh'
-                            })
+                            body: JSON.stringify({ valor: String(tarifaKwh) })
                         });
                     }
 
-                    // 2. Salvar PROPORÇÃO ENERGIA
                     if (proporcaoEnergiaId) {
                         await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${proporcaoEnergiaId}`, {
                             method: 'PATCH',
@@ -1088,28 +1014,10 @@
                                 'apikey': SUPABASE_KEY,
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({
-                                valor: String(proporcaoEnergia)
-                            })
-                        });
-                        console.log('✅ Proporção Energia salva:', proporcaoEnergia);
-                    } else {
-                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                                'apikey': SUPABASE_KEY,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                chave: 'proporcao_energia',
-                                valor: String(proporcaoEnergia),
-                                descricao: 'Proporção de energia na conta'
-                            })
+                            body: JSON.stringify({ valor: String(proporcaoEnergia) })
                         });
                     }
 
-                    // 3. Salvar PROPORÇÃO IMPOSTOS
                     if (proporcaoImpostosId) {
                         await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${proporcaoImpostosId}`, {
                             method: 'PATCH',
@@ -1118,28 +1026,10 @@
                                 'apikey': SUPABASE_KEY,
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({
-                                valor: String(proporcaoImpostos)
-                            })
-                        });
-                        console.log('✅ Proporção Impostos salva:', proporcaoImpostos);
-                    } else {
-                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                                'apikey': SUPABASE_KEY,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                chave: 'proporcao_impostos',
-                                valor: String(proporcaoImpostos),
-                                descricao: 'Proporção de impostos na conta'
-                            })
+                            body: JSON.stringify({ valor: String(proporcaoImpostos) })
                         });
                     }
 
-                    // 4. Salvar DESCONTO
                     if (descontoId) {
                         await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${descontoId}`, {
                             method: 'PATCH',
@@ -1148,46 +1038,18 @@
                                 'apikey': SUPABASE_KEY,
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({
-                                valor: String(descontoPercentual)
-                            })
-                        });
-                        console.log('✅ Desconto salvo:', descontoPercentual);
-                    } else {
-                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                                'apikey': SUPABASE_KEY,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                chave: 'desconto_percentual',
-                                valor: String(descontoPercentual),
-                                descricao: 'Percentual de desconto aplicado na proposta'
-                            })
+                            body: JSON.stringify({ valor: String(descontoPercentual) })
                         });
                     }
 
-                    console.log('✅ Todas as configurações salvas!');
-                    alert(`✅ Configurações atualizadas com sucesso!\n\n` +
-                          `Desconto: ${descontoPercentual}%\n` +
-                          `Tarifa: R$ ${tarifaKwh}/kWh\n` +
-                          `Proporção Energia: ${proporcaoEnergia}\n` +
-                          `Proporção Impostos: ${proporcaoImpostos}`);
-                    
+                    alert('✅ Configurações atualizadas com sucesso!');
                     await carregarConfiguracoes();
                 } catch (error) {
-                    console.error('❌ Erro ao salvar configurações:', error);
-                    alert('Erro ao salvar configurações. Verifique o console.');
+                    alert('Erro ao salvar configurações.');
                 } finally {
                     setSavingConfig(false);
                 }
             };
-
-            
-
-            
 
             const formatarData = (dataISO) => {
                 const data = new Date(dataISO);
@@ -1199,24 +1061,22 @@
                 const doc = new jsPDF();
                 
                 doc.setFont("helvetica");
-                
-                // Número do Contrato
                 doc.setFontSize(10);
                 doc.setFont("helvetica", "normal");
                 doc.setTextColor(100, 100, 100);
                 doc.text(`Contrato Nº: ${proposta.numero_contrato || 'N/A'}`, 20, 15);
                 
-                // Título
                 doc.setTextColor(0, 0, 0);
                 doc.setFontSize(18);
                 doc.setFont("helvetica", "bold");
                 doc.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", 105, 20, { align: "center" });
                 
-                // Conteúdo
                 doc.setFontSize(11);
                 doc.setFont("helvetica", "normal");
                 
-                const nomeCompleto = proposta.nome_completo || proposta.nome_fantasia || 'Sem nome';
+                const nomeCompleto = proposta.nome && proposta.sobrenome 
+                    ? `${proposta.nome} ${proposta.sobrenome}`
+                    : proposta.nome_fantasia || 'Sem nome';
                 
                 const cpfCnpj = proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj;
                 
@@ -1229,7 +1089,6 @@
                 
                 doc.text("CONTRATADA: OBY ENERGY", 20, 110);
                 
-                // Salvar
                 doc.save(`contrato_${nomeCompleto.replace(/\s+/g, '_')}.pdf`);
             };
 
@@ -1250,9 +1109,11 @@
 
             const propostasFiltradas = propostas.filter(proposta => {
                 const matchFiltro = filtro === 'todos' || proposta.status === filtro;
+                const nomeCompleto = proposta.nome && proposta.sobrenome 
+                    ? `${proposta.nome} ${proposta.sobrenome}` 
+                    : proposta.nome_fantasia || '';
                 const matchBusca = busca === '' || 
-                    proposta.nome_completo?.toLowerCase().includes(busca.toLowerCase()) ||
-                    proposta.nome_fantasia?.toLowerCase().includes(busca.toLowerCase()) ||
+                    nomeCompleto.toLowerCase().includes(busca.toLowerCase()) ||
                     proposta.email?.toLowerCase().includes(busca.toLowerCase()) ||
                     proposta.cidade?.toLowerCase().includes(busca.toLowerCase());
                 return matchFiltro && matchBusca;
@@ -1322,7 +1183,6 @@
                                 <button onClick={() => { setActiveTab('contrato'); carregarTemplates(); }} className={`px-6 py-3 font-semibold transition ${activeTab === 'contrato' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
                                     📄 Editor de Contrato
                                 </button>
-                                {/* NOVO BOTÃO: RELATÓRIO FINANCEIRO */}
                                 <button onClick={() => setActiveTab('financeiro')} className={`px-6 py-3 font-semibold transition ${activeTab === 'financeiro' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
                                     📊 Relatório Financeiro
                                 </button>
@@ -1373,9 +1233,6 @@
                                                 />
                                                 <span className="text-2xl font-bold text-green-600">%</span>
                                             </div>
-                                            <p className="text-xs text-gray-600 mt-2">
-                                                Este percentual será aplicado no cálculo da proposta de economia
-                                            </p>
                                         </div>
                                     </div>
 
@@ -1388,53 +1245,25 @@
                             <div className="bg-white rounded-xl shadow-lg p-6">
                                 <div className="mb-6">
                                     <h2 className="text-2xl font-bold text-gray-800">📄 Editor de Contrato</h2>
-                                    <p className="text-gray-600 text-sm mt-2">Personalize os textos que aparecem no contrato PDF</p>
                                 </div>
 
                                 {loadingTemplates ? (
                                     <p className="text-center text-gray-500 py-8">Carregando templates...</p>
-                                ) : templates.length === 0 ? (
-                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                                        <h3 className="text-lg font-semibold text-yellow-800 mb-2">⚠️ Nenhum template encontrado</h3>
-                                        <p className="text-yellow-700 mb-4">A tabela <code className="bg-white px-2 py-1 rounded">contrato_templates</code> está vazia.</p>
-                                        <p className="text-sm text-yellow-600">Para criar templates, execute o SQL no Supabase:</p>
-                                        <pre className="bg-white p-3 rounded mt-2 text-xs overflow-x-auto">
-{`INSERT INTO contrato_templates (ordem, secao, texto) VALUES
-(1, 'Introdução', 'Contrato de prestação de serviços...'),
-(2, 'Cláusula 1', 'O objeto do presente contrato...'),
-(3, 'Cláusula 2', 'As condições financeiras...'),
-(4, 'Cláusula 3', 'As responsabilidades...'),
-(5, 'Cláusula 4', 'Disposições gerais...');`}
-                                        </pre>
-                                    </div>
                                 ) : (
                                     <div className="space-y-6">
-                                        {templates.map((template, index) => {
-                                            // Labels descritivas para cada template (CORRIGIDO)
-                                            const labels = {
-                                                1: '📝 Introdução do Contrato',
-                                                2: '📋 Cláusula 1 - Objeto do Contrato',
-                                                3: '💰 Cláusula 2 - Condições Financeiras',
-                                                4: '⚖️ Cláusula 3 - Responsabilidades',
-                                                5: '📄 Cláusula 4 - Disposições Gerais'
-                                            };
-                                            const label = template.secao || labels[template.id] || labels[index + 1] || `Seção ${index + 1}`;
-                                            
-                                            return (
-                                                <div key={template.id} className="bg-gray-50 p-4 rounded-lg">
-                                                    <label className="block font-semibold text-gray-700 mb-2">
-                                                        {label}
-                                                    </label>
-                                                    <textarea
-                                                        value={template.texto}
-                                                        onChange={(e) => atualizarTemplate(template.id, e.target.value)}
-                                                        rows="4"
-                                                        className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm"
-                                                        placeholder="Digite o texto desta seção do contrato..."
-                                                    />
-                                                </div>
-                                            );
-                                        })}
+                                        {templates.map((template) => (
+                                            <div key={template.id} className="bg-gray-50 p-4 rounded-lg">
+                                                <label className="block font-semibold text-gray-700 mb-2">
+                                                    {template.secao}
+                                                </label>
+                                                <textarea
+                                                    value={template.texto}
+                                                    onChange={(e) => atualizarTemplate(template.id, e.target.value)}
+                                                    rows="4"
+                                                    className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm"
+                                                />
+                                            </div>
+                                        ))}
 
                                         <div className="flex gap-4">
                                             <button onClick={salvarTemplates} disabled={savingTemplates} className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50">
@@ -1443,20 +1272,6 @@
                                             <button onClick={carregarTemplates} disabled={loadingTemplates} className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 disabled:opacity-50">
                                                 🔄 Recarregar
                                             </button>
-                                        </div>
-
-                                        <div className="bg-blue-50 p-4 rounded-lg">
-                                            <h3 className="font-semibold text-blue-800 mb-2">📝 Variáveis Disponíveis</h3>
-                                            <p className="text-sm text-gray-700">Use estas variáveis no texto (serão substituídas automaticamente):</p>
-                                            <ul className="text-sm text-gray-600 mt-2 space-y-1">
-                                                <li><code className="bg-white px-2 py-1 rounded">[NOME]</code> - Nome do cliente</li>
-                                                <li><code className="bg-white px-2 py-1 rounded">[CPF_CNPJ]</code> - CPF ou CNPJ</li>
-                                                <li><code className="bg-white px-2 py-1 rounded">[ENDERECO]</code> - Endereço completo</li>
-                                                <li><code className="bg-white px-2 py-1 rounded">[CIDADE]</code> - Cidade</li>
-                                                <li><code className="bg-white px-2 py-1 rounded">[ESTADO]</code> - Estado (UF)</li>
-                                                <li><code className="bg-white px-2 py-1 rounded">[DATA]</code> - Data atual</li>
-                                                <li><code className="bg-white px-2 py-1 rounded">[DESCONTO]</code> - Percentual de desconto</li>
-                                            </ul>
                                         </div>
                                     </div>
                                 )}
@@ -1521,46 +1336,41 @@
                                                         </td>
                                                     </tr>
                                                 ) : (
-                                                    propostasFiltradas.map((proposta) => (
-                                                        <tr key={proposta.id} className="hover:bg-gray-50">
-                                                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                                                                {proposta.nome_completo || proposta.nome_fantasia || 'Sem nome'}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-sm font-semibold text-blue-600">
-                                                                {proposta.numero_contrato || '-'}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.email}</td>
-                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.cidade}</td>
-                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.telefone}</td>
-                                                            <td className="px-4 py-3 text-sm text-gray-600">{proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj}</td>
-                                                            <td className="px-4 py-3 text-sm text-gray-600">{formatarData(proposta.data_criacao)}</td>
-                                                            <td className="px-4 py-3">
-                                                                {getStatusBadge(proposta.status || 'pendente')}
-                                                            </td>
-                                                            <td className="px-4 py-3 flex gap-2">
-                                                                <button onClick={() => {
-                                                                    console.log('📎 Proposta selecionada para anexos:', proposta);
-                                                                    console.log('📁 Arquivos disponíveis:', {
-                                                                        conta: proposta.arquivo_conta_url,
-                                                                        rg_frente: proposta.rg_frente_url,
-                                                                        rg_verso: proposta.rg_verso_url,
-                                                                        rg_rep1_frente: proposta.rg_rep1_frente_url,
-                                                                        rg_rep1_verso: proposta.rg_rep1_verso_url,
-                                                                        contrato_social: proposta.contrato_social_url
-                                                                    });
-                                                                    setPropostaAnexos(proposta);
-                                                                }} className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700" title="Ver Anexos">
-                                                                    👁️ Anexos
-                                                                </button>
-                                                                <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
-                                                                    📝 Editar
-                                                                </button>
-                                                                <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
-                                                                    📄 PDF
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))
+                                                    propostasFiltradas.map((proposta) => {
+                                                        const nomeCompleto = proposta.nome && proposta.sobrenome 
+                                                            ? `${proposta.nome} ${proposta.sobrenome}`
+                                                            : proposta.nome_fantasia || 'Sem nome';
+                                                        
+                                                        return (
+                                                            <tr key={proposta.id} className="hover:bg-gray-50">
+                                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                                    {nomeCompleto}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-sm font-semibold text-blue-600">
+                                                                    {proposta.numero_contrato || '-'}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-sm text-gray-600">{proposta.email}</td>
+                                                                <td className="px-4 py-3 text-sm text-gray-600">{proposta.cidade}</td>
+                                                                <td className="px-4 py-3 text-sm text-gray-600">{proposta.telefone}</td>
+                                                                <td className="px-4 py-3 text-sm text-gray-600">{proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj}</td>
+                                                                <td className="px-4 py-3 text-sm text-gray-600">{formatarData(proposta.data_criacao)}</td>
+                                                                <td className="px-4 py-3">
+                                                                    {getStatusBadge(proposta.status || 'pendente')}
+                                                                </td>
+                                                                <td className="px-4 py-3 flex gap-2">
+                                                                    <button onClick={() => setPropostaAnexos(proposta)} className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700">
+                                                                        👁️ Anexos
+                                                                    </button>
+                                                                    <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                                                                        📝 Editar
+                                                                    </button>
+                                                                    <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                                                        📄 PDF
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })
                                                 )}
                                             </tbody>
                                         </table>
@@ -1569,6 +1379,7 @@
                             </>
                         )}
                     </div>
+
                     {selectedProposta && (
                         <EditPropostaModal 
                             proposta={selectedProposta} 
@@ -1577,22 +1388,23 @@
                             saving={savingProposta}
                         />
                     )}
+
                     {propostaAnexos && (
                         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                                 <div className="p-6 border-b border-gray-200">
                                     <h2 className="text-2xl font-bold text-gray-800">📎 Anexos da Proposta</h2>
-                                    <p className="text-sm text-gray-500">Cliente: {propostaAnexos.nome_completo || propostaAnexos.nome_fantasia || 'Sem nome'}</p>
+                                    <p className="text-sm text-gray-500">Cliente: {propostaAnexos.nome && propostaAnexos.sobrenome 
+                                        ? `${propostaAnexos.nome} ${propostaAnexos.sobrenome}`
+                                        : propostaAnexos.nome_fantasia || 'Sem nome'}</p>
                                     <p className="text-sm text-blue-600">Nº Contrato: {propostaAnexos.numero_contrato || 'N/A'}</p>
                                 </div>
                                 <div className="p-6 overflow-y-auto">
                                     <div className="space-y-4">
-                                        {/* CONTA DE ENERGIA - PRIMEIRO */}
                                         {propostaAnexos.arquivo_conta_url ? (
                                             <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
                                                 <div>
                                                     <p className="font-semibold text-blue-800">⚡ Conta de Energia</p>
-                                                    <p className="text-sm text-gray-600">Arquivo da conta de energia</p>
                                                 </div>
                                                 <a href={propostaAnexos.arquivo_conta_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                                                     👁️ Ver
@@ -1604,110 +1416,28 @@
                                                     <p className="font-semibold text-gray-500">⚡ Conta de Energia</p>
                                                     <p className="text-sm text-gray-400">Não enviado</p>
                                                 </div>
-                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">❌ Faltando</span>
                                             </div>
                                         )}
                                         
-                                        {/* DOCUMENTOS PESSOA FÍSICA */}
-                                        {propostaAnexos.rg_frente_url ? (
+                                        {propostaAnexos.rg_frente_url && (
                                             <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
                                                 <div>
                                                     <p className="font-semibold text-green-800">🪪 RG/CNH (Frente)</p>
-                                                    <p className="text-sm text-gray-600">Documento de identidade - frente</p>
                                                 </div>
                                                 <a href={propostaAnexos.rg_frente_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
                                                     👁️ Ver
                                                 </a>
                                             </div>
-                                        ) : (
-                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
-                                                <div>
-                                                    <p className="font-semibold text-gray-500">🪪 RG/CNH (Frente)</p>
-                                                    <p className="text-sm text-gray-400">Não enviado</p>
-                                                </div>
-                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">❌ Faltando</span>
-                                            </div>
                                         )}
                                         
-                                        {propostaAnexos.rg_verso_url ? (
+                                        {propostaAnexos.rg_verso_url && (
                                             <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
                                                 <div>
                                                     <p className="font-semibold text-green-800">🪪 RG/CNH (Verso)</p>
-                                                    <p className="text-sm text-gray-600">Documento de identidade - verso</p>
                                                 </div>
-                                                <a href={propostaAnexos.rg_verso_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                                <a href={propostaAnexos.rg_verso_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                                                     👁️ Ver
                                                 </a>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
-                                                <div>
-                                                    <p className="font-semibold text-gray-500">🪪 RG/CNH (Verso)</p>
-                                                    <p className="text-sm text-gray-400">Não enviado</p>
-                                                </div>
-                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">❌ Faltando</span>
-                                            </div>
-                                        )}
-                                        
-                                        {/* DOCUMENTOS REPRESENTANTE LEGAL */}
-                                        {propostaAnexos.rg_rep1_frente_url ? (
-                                            <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
-                                                <div>
-                                                    <p className="font-semibold text-purple-800">👔 RG Representante Legal (Frente)</p>
-                                                    <p className="text-sm text-gray-600">Documento do representante - frente</p>
-                                                </div>
-                                                <a href={propostaAnexos.rg_rep1_frente_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
-                                                    👁️ Ver
-                                                </a>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
-                                                <div>
-                                                    <p className="font-semibold text-gray-500">👔 RG Representante Legal (Frente)</p>
-                                                    <p className="text-sm text-gray-400">Não enviado (opcional)</p>
-                                                </div>
-                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">⚪ Opcional</span>
-                                            </div>
-                                        )}
-                                        
-                                        {propostaAnexos.rg_rep1_verso_url ? (
-                                            <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
-                                                <div>
-                                                    <p className="font-semibold text-purple-800">👔 RG Representante Legal (Verso)</p>
-                                                    <p className="text-sm text-gray-600">Documento do representante - verso</p>
-                                                </div>
-                                                <a href={propostaAnexos.rg_rep1_verso_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
-                                                    👁️ Ver
-                                                </a>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
-                                                <div>
-                                                    <p className="font-semibold text-gray-500">👔 RG Representante Legal (Verso)</p>
-                                                    <p className="text-sm text-gray-400">Não enviado (opcional)</p>
-                                                </div>
-                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">⚪ Opcional</span>
-                                            </div>
-                                        )}
-                                        
-                                        {/* CONTRATO SOCIAL */}
-                                        {propostaAnexos.contrato_social_url ? (
-                                            <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                                                <div>
-                                                    <p className="font-semibold text-yellow-800">📄 Contrato Social</p>
-                                                    <p className="text-sm text-gray-600">Documento da empresa</p>
-                                                </div>
-                                                <a href={propostaAnexos.contrato_social_url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700">
-                                                    👁️ Ver
-                                                </a>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 opacity-60">
-                                                <div>
-                                                    <p className="font-semibold text-gray-500">📄 Contrato Social</p>
-                                                    <p className="text-sm text-gray-400">Não enviado (opcional para PF)</p>
-                                                </div>
-                                                <span className="px-4 py-2 bg-gray-300 text-gray-600 rounded">⚪ Opcional</span>
                                             </div>
                                         )}
                                     </div>

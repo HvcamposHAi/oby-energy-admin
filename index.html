@@ -805,11 +805,13 @@
             const [tarifaKwh, setTarifaKwh] = useState('0.842355');
             const [proporcaoEnergia, setProporcaoEnergia] = useState('0.81');
             const [proporcaoImpostos, setProporcaoImpostos] = useState('0.19');
-            const [descontoPercentual, setDescontoPercentual] = useState('15'); 
+            const [descontoPercentual, setDescontoPercentual] = useState('15');
+            const [consumoMinimoValor, setConsumoMinimoValor] = useState('0');
             const [tarifaId, setTarifaId] = useState(null);
             const [proporcaoEnergiaId, setProporcaoEnergiaId] = useState(null);
             const [proporcaoImpostosId, setProporcaoImpostosId] = useState(null);
             const [descontoId, setDescontoId] = useState(null);
+            const [consumoMinimoId, setConsumoMinimoId] = useState(null);
             const [savingConfig, setSavingConfig] = useState(false);
             const [templates, setTemplates] = useState([]);
             const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -940,6 +942,10 @@
                                 setDescontoPercentual(config.valor);
                                 setDescontoId(config.id);
                             }
+                            if (config.chave === 'consumo_minimo_valor') {
+                                setConsumoMinimoValor(config.valor);
+                                setConsumoMinimoId(config.id);
+                            }
                         });
                     }
                 } catch (error) {
@@ -1047,6 +1053,18 @@
                         });
                     }
 
+                    if (consumoMinimoId) {
+                        await fetch(`${SUPABASE_URL}/rest/v1/configuracoes?id=eq.${consumoMinimoId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                                'apikey': SUPABASE_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ valor: String(consumoMinimoValor) })
+                        });
+                    }
+
                     alert('✅ Configurações atualizadas com sucesso!');
                     await carregarConfiguracoes();
                 } catch (error) {
@@ -1133,7 +1151,6 @@
                 const file = e.target.files[0];
                 if (!file) return;
 
-                // Validar tamanho (máx 10MB)
                 if (file.size > 10 * 1024 * 1024) {
                     alert('❌ Arquivo muito grande! Tamanho máximo: 10MB');
                     return;
@@ -1143,12 +1160,10 @@
                 if (!confirmar) return;
 
                 try {
-                    // Criar FormData para upload
                     const timestamp = Date.now();
                     const fileExtension = file.name.split('.').pop();
                     const fileName = `${nomeCampo}_${timestamp}.${fileExtension}`;
                     
-                    // Upload usando FormData
                     const formData = new FormData();
                     formData.append('file', file);
 
@@ -1168,7 +1183,6 @@
 
                     const fileUrl = `${SUPABASE_URL}/storage/v1/object/public/propostas/${fileName}`;
 
-                    // Atualizar banco de dados
                     const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/propostas?id=eq.${propostaId}`, {
                         method: 'PATCH',
                         headers: {
@@ -1186,10 +1200,8 @@
 
                     alert('✅ Arquivo substituído com sucesso!');
                     
-                    // Atualizar a lista de propostas
                     carregarPropostas();
                     
-                    // Atualizar o modal
                     const updatedData = await updateResponse.json();
                     setPropostaAnexos(updatedData[0]);
 
@@ -1198,7 +1210,6 @@
                     console.error('Erro completo:', error);
                 }
 
-                // Limpar o input
                 e.target.value = '';
             };
 
@@ -1343,6 +1354,29 @@
                                                 />
                                                 <span className="text-2xl font-bold text-green-600">%</span>
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-purple-50 p-6 rounded-lg">
+                                        <h3 className="font-bold text-lg mb-4 text-purple-800">💡 Consumo Mínimo</h3>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Valor do Consumo Mínimo (R$)
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-2xl font-bold text-purple-600">R$</span>
+                                                <input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    min="0"
+                                                    value={consumoMinimoValor} 
+                                                    onChange={(e) => setConsumoMinimoValor(e.target.value)} 
+                                                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-2">
+                                                ℹ️ Valor fixo cobrado pela distribuidora para o consumo mínimo (ex: 100 kWh na COPEL = R$ 84,24)
+                                            </p>
                                         </div>
                                     </div>
 
@@ -1518,7 +1552,6 @@
                                 </div>
                                 <div className="p-6 overflow-y-auto">
                                     <div className="space-y-4">
-                                        {/* Conta de Energia */}
                                         <div className={`flex items-center justify-between p-4 rounded-lg border ${propostaAnexos.arquivo_conta_url ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
                                             <div>
                                                 <p className={`font-semibold ${propostaAnexos.arquivo_conta_url ? 'text-blue-800' : 'text-gray-500'}`}>⚡ Conta de Energia</p>
@@ -1546,7 +1579,6 @@
                                             </div>
                                         </div>
                                         
-                                        {/* RG/CNH Frente */}
                                         <div className={`flex items-center justify-between p-4 rounded-lg border ${propostaAnexos.rg_frente_url ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
                                             <div>
                                                 <p className={`font-semibold ${propostaAnexos.rg_frente_url ? 'text-green-800' : 'text-gray-500'}`}>🪪 RG/CNH (Frente)</p>
@@ -1574,7 +1606,6 @@
                                             </div>
                                         </div>
                                         
-                                        {/* RG/CNH Verso */}
                                         <div className={`flex items-center justify-between p-4 rounded-lg border ${propostaAnexos.rg_verso_url ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
                                             <div>
                                                 <p className={`font-semibold ${propostaAnexos.rg_verso_url ? 'text-green-800' : 'text-gray-500'}`}>🪪 RG/CNH (Verso)</p>

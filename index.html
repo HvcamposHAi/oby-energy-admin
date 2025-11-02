@@ -372,7 +372,7 @@
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/vendedores?select=*&order=data_cadastro.desc`, {
                         headers: {
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'apikey': SUPABASE_KEY
+                            'apikey': SUPABASE_KEY'
                         }
                     });
                     
@@ -1111,6 +1111,95 @@
                 return data.toLocaleDateString('pt-BR');
             };
 
+            // ============================================================
+            // NOVO: GERADOR DOCX (substitui a necessidade do PDF)
+            // ============================================================
+            const gerarContratoDOCX = async (proposta) => {
+                // 1) Carregar lib docx on-demand (sem mexer no <head>)
+                if (!window.docx) {
+                    await new Promise((resolve, reject) => {
+                        const s = document.createElement('script');
+                        s.src = "https://unpkg.com/docx@8.5.0/build/index.umd.js";
+                        s.onload = resolve;
+                        s.onerror = () => reject(new Error("Falha ao carregar a lib DOCX"));
+                        document.head.appendChild(s);
+                    });
+                }
+                const { Document, Packer, Paragraph, HeadingLevel, TextRun } = window.docx;
+
+                // 2) Puxar templates do Editor de Contrato
+                const resp = await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?select=*&order=ordem.asc`, {
+                    headers: { 'Authorization': `Bearer ${SUPABASE_KEY}`, 'apikey': SUPABASE_KEY }
+                });
+                if (!resp.ok) {
+                    alert('❌ Não foi possível carregar os templates do contrato.');
+                    return;
+                }
+                const templates = await resp.json();
+
+                // 3) Mapa de placeholders
+                const nomeCompleto = (proposta.nome && proposta.sobrenome) 
+                    ? `${proposta.nome} ${proposta.sobrenome}` 
+                    : (proposta.nome_fantasia || 'Sem nome');
+
+                const map = {
+                    numero_contrato: proposta.numero_contrato || 'N/A',
+                    contratante_nome: nomeCompleto,
+                    contratante_cpf_cnpj: proposta.tipo_pessoa === 'fisica' ? (proposta.cpf || '') : (proposta.cnpj || ''),
+                    contratante_email: proposta.email || '',
+                    contratante_telefone: proposta.telefone || '',
+                    contratante_endereco: `${proposta.logradouro || ''}, ${proposta.numero_endereco || ''} ${proposta.complemento ? ' - ' + proposta.complemento : ''}`,
+                    contratante_cidade_uf: `${proposta.cidade || ''}${proposta.estado ? ' - ' + proposta.estado : ''}`,
+                    contratante_cep: proposta.cep || '',
+                    distribuidora: proposta.distribuidora_energia || '',
+                    consumo_kwh: String(proposta.consumo_kwh || 0),
+                    vendedor: proposta.vendedor || '',
+                    data_contrato: new Date().toLocaleDateString('pt-BR'),
+                    contratada_nome: 'OBY ENERGY'
+                };
+
+                // 4) Merge: {{chave}} -> valor
+                const merge = (texto) => texto.replace(/\{\{\s*([\w_]+)\s*\}\}/g, (_, k) => (map[k] ?? ''));
+
+                // 5) Concatena as seções e quebra em linhas
+                const secoes = templates.map(t => merge(t.texto || '')).join('\n\n');
+                const linhas = secoes.split(/\r?\n/);
+
+                // 6) Montagem do DOCX
+                const titulo = `CONTRATO DE PRESTAÇÃO DE SERVIÇOS`;
+                const doc = new Document({
+                    sections: [{
+                        properties: {},
+                        children: [
+                            new Paragraph({
+                                text: `Contrato Nº: ${map.numero_contrato}`,
+                                heading: HeadingLevel.HEADING_3
+                            }),
+                            new Paragraph({
+                                text: titulo,
+                                heading: HeadingLevel.HEADING_1
+                            }),
+                            ...linhas.map(l => new Paragraph({
+                                children: [new TextRun({ text: l })]
+                            }))
+                        ]
+                    }]
+                });
+
+                // 7) Baixar .docx
+                const nomeArquivo = `contrato_${(nomeCompleto || 'cliente').replace(/\s+/g, '_')}.docx`;
+                const blob = await Packer.toBlob(doc);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = nomeArquivo;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            };
+
+            // (Mantido) Versão PDF antiga — não é chamada mais, mas mantida para integridade
             const gerarContratoPDF = (proposta) => {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
@@ -1515,8 +1604,9 @@
                                                                             🔢 Gerar Nº
                                                                         </button>
                                                                     )}
-                                                                    <button onClick={() => gerarContratoPDF(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
-                                                                        📄 PDF
+                                                                    {/* ALTERAÇÃO: agora gera DOCX (não PDF) */}
+                                                                    <button onClick={() => gerarContratoDOCX(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                                                        📄 DOCX
                                                                     </button>
                                                                 </td>
                                                             </tr>

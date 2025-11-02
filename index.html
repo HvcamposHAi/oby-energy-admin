@@ -12,179 +12,357 @@
         function EditPropostaModal({ proposta, onClose, onSave, saving }) {
             
             const editableColumns = [
-                'nome', 'sobrenome', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
+        
+        'nome', 'sobrenome', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
                 'cpf', 'cnpj', 'logradouro', 'numero_endereco', 'complemento', 'consumo_kwh', 
                 'distribuidora_energia', 'status', 'tipo_pessoa', 'numero_instalacao', 
                 'tipo_conexao', 'vendedor' 
             ];
-
-            const [formData, setFormData] = useState({
+const [formData, setFormData] = useState({
                 ...proposta,
                 nome: proposta.nome || '',
                 sobrenome: proposta.sobrenome || '',
                 cpf: proposta.cpf || '',
                 cnpj: proposta.cnpj || '',
-                logradouro: proposta.logradouro || '',
+    
+            logradouro: proposta.logradouro || '',
                 numero_endereco: proposta.numero_endereco || '',
                 complemento: proposta.complemento || '',
                 consumo_kwh: proposta.consumo_kwh || 0,
                 distribuidora_energia: proposta.distribuidora_energia || '',
-                vendedor: proposta.vendedor || ''
+         
+       vendedor: proposta.vendedor || ''
             });
-
-            const handleChange = (e) => {
+const handleChange = (e) => {
                 const { name, value } = e.target;
-                setFormData(prev => ({ ...prev, [name]: value }));
+setFormData(prev => ({ ...prev, [name]: value }));
             };
 
             const handleSave = () => {
                 const dataToSave = { id: formData.id };
-                
-                if (!formData.numero_contrato || formData.numero_contrato === '-') {
+if (!formData.numero_contrato || formData.numero_contrato === '-') {
                     const anoAtual = new Date().getFullYear();
-                    const idCurto = String(formData.id).slice(-5);
+const idCurto = String(formData.id).slice(-5);
                     dataToSave.numero_contrato = `OBY-${anoAtual}-${idCurto}`;
                 }
                 
                 editableColumns.forEach(column => {
                     if (formData.hasOwnProperty(column)) {
                         let value = formData[column];
-                        if (column === 'consumo_kwh') {
+          
+              if (column === 'consumo_kwh') {
                             value = Number(value);
                         }
                         dataToSave[column] = value;
-                    }
+  
+                  }
                 });
-                
-                onSave(dataToSave);
+onSave(dataToSave);
             };
 
             const inputClass = "w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150";
-            const labelClass = "block text-sm font-medium text-gray-700 mb-1";
+const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 
             return (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
                         <div className="p-6 border-b border-gray-200">
-                            <h2 className="text-2xl font-bold text-gray-800">📝 Editar Proposta: {proposta.numero_contrato || 'N/A'}</h2>
+           
+                 <h2 className="text-2xl font-bold text-gray-800">📝 Editar Proposta: {proposta.numero_contrato || 'N/A'}</h2>
                             <p className="text-sm text-gray-500">Altere os dados da proposta do cliente. O Número do Contrato não pode ser editado.</p>
                         </div>
 
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
+       
+                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
                             {/* Informações do Contrato */}
                             <div className="md:col-span-2 bg-gray-100 p-4 rounded-lg border-l-4 border-gray-400">
-                                <h3 className="font-bold text-lg mb-3 text-gray-700">Detalhes de Identificação</h3>
+           
+                     <h3 className="font-bold text-lg mb-3 text-gray-700">Detalhes de Identificação</h3>
                                 <div className="space-y-3">
                                     <div>
-                                        <label className={labelClass}>Número do Contrato</label>
-                                        <input type="text" value={proposta.numero_contrato || 'N/A'} disabled className={`${inputClass} bg-gray-200 cursor-not-allowed text-gray-700 font-semibold`} />
+    
+                                    <label className={labelClass}>Número do Contrato</label>
+                                        <input type="text" value={proposta.numero_contrato ||
+'N/A'} disabled className={`${inputClass} bg-gray-200 cursor-not-allowed text-gray-700 font-semibold`} />
                                     </div>
                                 </div>
-                            </div>
+                         
+   </div>
 
                             {/* Dados Pessoais */}
                             <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
-                                <h3 className="font-bold text-lg mb-4 text-blue-800">Dados Pessoais</h3>
+                                <h3 
+className="font-bold text-lg mb-4 text-blue-800">Dados Pessoais</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className={labelClass}>Nome</label>
+                           
+             <label className={labelClass}>Nome</label>
                                         <input type="text" name="nome" value={formData.nome} onChange={handleChange} className={inputClass} />
                                     </div>
-                                    <div>
+    
+                                <div>
                                         <label className={labelClass}>Sobrenome</label>
-                                        <input type="text" name="sobrenome" value={formData.sobrenome} onChange={handleChange} className={inputClass} />
+                           
+             <input type="text" name="sobrenome" value={formData.sobrenome} onChange={handleChange} className={inputClass} />
                                     </div>
                                     {formData.tipo_pessoa === 'juridica' && (
-                                        <div>
+     
+                                   <div>
                                             <label className={labelClass}>Nome Fantasia</label>
-                                            <input type="text" name="nome_fantasia" value={formData.nome_fantasia || ''} onChange={handleChange} className={inputClass} />
+                   
+                         <input type="text" name="nome_fantasia" value={formData.nome_fantasia ||
+''} onChange={handleChange} className={inputClass} />
                                         </div>
                                     )}
-                                    <div>
+                     
+               <div>
                                         <label className={labelClass}>Email</label>
-                                        <input type="email" name="email" value={formData.email || ''} onChange={handleChange} className={inputClass} />
+                                        <input type="email" name="email" value={formData.email 
+|| ''} onChange={handleChange} className={inputClass} />
                                     </div>
                                     <div>
-                                        <label className={labelClass}>Telefone</label>
-                                        <input type="text" name="telefone" value={formData.telefone || ''} onChange={handleChange} className={inputClass} />
+                        
+                <label className={labelClass}>Telefone</label>
+                                        <input type="text" name="telefone" value={formData.telefone ||
+''} onChange={handleChange} className={inputClass} />
                                     </div>
                                     <div>
-                                        <label className={labelClass}>{formData.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'}</label>
+                         
+               <label className={labelClass}>{formData.tipo_pessoa === 'fisica' ?
+'CPF' : 'CNPJ'}</label>
                                         <input 
                                             type="text" 
-                                            name={formData.tipo_pessoa === 'fisica' ? 'cpf' : 'cnpj'} 
-                                            value={formData.tipo_pessoa === 'fisica' ? formData.cpf || '' : formData.cnpj || ''} 
+            
+                                name={formData.tipo_pessoa === 'fisica' ?
+'cpf' : 'cnpj'} 
+                                            value={formData.tipo_pessoa === 'fisica' ?
+formData.cpf || '' : formData.cnpj || ''} 
                                             onChange={handleChange} 
                                             className={inputClass} 
-                                        />
+   
+                                     />
                                     </div>
-                                    <div>
+                           
+         <div>
                                         <label className={labelClass}>Vendedor</label>
-                                        <input type="text" name="vendedor" value={formData.vendedor || ''} onChange={handleChange} className={inputClass} />
+                                        <input type="text" name="vendedor" value={formData.vendedor ||
+''} onChange={handleChange} className={inputClass} />
                                     </div>
                                     <div>
-                                        <label className={labelClass}>Status da Proposta</label>
-                                        <select name="status" value={formData.status || 'pendente'} onChange={handleChange} className={inputClass}>
+                         
+               <label className={labelClass}>Status da Proposta</label>
+                                        <select name="status" value={formData.status ||
+'pendente'} onChange={handleChange} className={inputClass}>
                                             <option value="pendente">🟡 Pendente</option>
                                             <option value="aprovado">🟢 Aprovado</option>
-                                            <option value="reprovado">🔴 Reprovado</option>
+      
+                                      <option value="reprovado">🔴 Reprovado</option>
                                             <option value="lista_espera">🟠 Lista de Espera</option>
-                                        </select>
+            
+                            </select>
                                     </div>
                                 </div>
-                            </div>
+    
+                        </div>
 
                             {/* Dados de Endereço e Instalação */}
                             <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
-                                <h3 className="font-bold text-lg mb-4 text-green-800">Endereço e Instalação</h3>
+         
+                       <h3 className="font-bold text-lg mb-4 text-green-800">Endereço e Instalação</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className={labelClass}>CEP</label>
-                                        <input type="text" name="cep" value={formData.cep || ''} onChange={handleChange} className={inputClass} />
+  
+                                      <label className={labelClass}>CEP</label>
+                                        <input type="text" name="cep" value={formData.cep ||
+''} onChange={handleChange} className={inputClass} />
                                     </div>
                                     <div>
-                                        <label className={labelClass}>Logradouro</label>
-                                        <input type="text" name="logradouro" value={formData.logradouro || ''} onChange={handleChange} className={inputClass} />
+                         
+               <label className={labelClass}>Logradouro</label>
+                                        <input type="text" name="logradouro" value={formData.logradouro ||
+''} onChange={handleChange} className={inputClass} />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
+                      
+                  <div>
                                             <label className={labelClass}>Número</label>
-                                            <input type="text" name="numero_endereco" value={formData.numero_endereco || ''} onChange={handleChange} className={inputClass} />
+                                     
+       <input type="text" name="numero_endereco" value={formData.numero_endereco ||
+''} onChange={handleChange} className={inputClass} />
                                         </div>
                                         <div>
-                                            <label className={labelClass}>Complemento</label>
-                                            <input type="text" name="complemento" value={formData.complemento || ''} onChange={handleChange} className={inputClass} />
+                 
+                           <label className={labelClass}>Complemento</label>
+                                            <input type="text" name="complemento" value={formData.complemento ||
+''} onChange={handleChange} className={inputClass} />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                     
+               <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className={labelClass}>Cidade</label>
-                                            <input type="text" name="cidade" value={formData.cidade || ''} onChange={handleChange} className={inputClass} />
+                                          
+  <label className={labelClass}>Cidade</label>
+                                            <input type="text" name="cidade" value={formData.cidade ||
+''} onChange={handleChange} className={inputClass} />
                                         </div>
                                         <div>
-                                            <label className={labelClass}>Estado (UF)</label>
-                                            <input type="text" name="estado" value={formData.estado || ''} onChange={handleChange} className={inputClass} />
+                 
+                           <label className={labelClass}>Estado (UF)</label>
+                                            <input type="text" name="estado" value={formData.estado ||
+''} onChange={handleChange} className={inputClass} />
                                         </div>
                                     </div>
-                                    <div>
+                     
+               <div>
                                         <label className={labelClass}>Distribuidora</label>
-                                        <input type="text" name="distribuidora_energia" value={formData.distribuidora_energia || ''} onChange={handleChange} className={inputClass} />
+                                        <input type="text" name="distribuidora_energia" value={formData.distribuidora_energia 
+|| ''} onChange={handleChange} className={inputClass} />
                                     </div>
                                     <div>
-                                        <label className={labelClass}>Consumo Médio (kWh)</label>
-                                        <input type="number" step="1" name="consumo_kwh" value={formData.consumo_kwh || 0} onChange={handleChange} className={inputClass} />
+                        
+                <label className={labelClass}>Consumo Médio (kWh)</label>
+                                        <input type="number" step="1" name="consumo_kwh" value={formData.consumo_kwh ||
+0} onChange={handleChange} className={inputClass} />
                                     </div>
                                 </div>
                             </div>
-                        </div>
+ 
+                       </div>
                         
                         {/* Botões do Modal */}
-                        <div className="p-6 flex justify-end gap-3 border-t border-gray-200">
+                        <div 
+className="p-6 flex justify-end gap-3 border-t border-gray-200">
                             <button onClick={onClose} className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600">
                                 Cancelar
-                            </button>
+                           
+ </button>
                             <button onClick={handleSave} disabled={saving} className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50">
-                                {saving ? 'Salvando...' : '💾 Salvar Alterações'}
+                                {saving ?
+'Salvando...' : '💾 Salvar Alterações'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+        
+    );
+        }
+
+        // --- NOVO COMPONENTE DO VISUALIZADOR DE CONTRATO (ContratoViewerModal) ---
+        function ContratoViewerModal({ proposta, onClose }) {
+            if (!proposta) return null;
+
+            // Função auxiliar para obter o nome/documento correto
+            const getNomeContratante = () => {
+                if (proposta.tipo_pessoa === 'juridica') {
+                    return proposta.nome_fantasia || `${proposta.nome} ${proposta.sobrenome}`;
+                }
+                return `${proposta.nome} ${proposta.sobrenome}`;
+            };
+
+            const getDocumentoContratante = () => {
+                return proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj;
+            };
+
+            const getEnderecoCompleto = () => {
+                const numero = proposta.numero_endereco ? `, ${proposta.numero_endereco}` : '';
+                const complemento = proposta.complemento ? ` - ${proposta.complemento}` : '';
+                const cidadeEstado = (proposta.cidade && proposta.estado) ? `${proposta.cidade}/${proposta.estado}` : '';
+                const cep = proposta.cep ? ` - CEP: ${proposta.cep}` : '';
+
+                return `${proposta.logradouro}${numero}${complemento}, ${cidadeEstado}${cep}`;
+            };
+            
+            // Função auxiliar para formatar números para exibição
+            const formatNumber = (num) => {
+                // Certifica-se de que é um número e usa fallback
+                const numberValue = Number(num) || 0;
+                return numberValue.toLocaleString('pt-BR');
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col">
+                        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                            <h2 className="text-2xl font-bold text-gray-800">📄 Contrato: {proposta.numero_contrato || 'N/A'}</h2>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-3xl leading-none">
+                                &times;
+                            </button>
+                        </div>
+
+                        {/* Corpo do Contrato */}
+                        <div className="p-8 overflow-y-auto leading-relaxed text-gray-800 print:p-0">
+                            
+                            <div className="max-w-3xl mx-auto space-y-6">
+                                <h1 className="text-center text-xl font-bold uppercase mb-8">CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ENERGIA</h1>
+                                
+                                {/* Cabeçalho do Contrato (Baseado na imagem do Editor de Contrato) */}
+                                <div className="border p-4 rounded-lg bg-gray-50">
+                                    <h3 className="font-bold mb-2">Cabeçalho do Contrato</h3>
+                                    <p className="text-sm">
+                                        Este contrato é celebrado entre:
+                                    </p>
+                                    <p className="font-semibold mt-2">
+                                        CONTRATANTE: **{getNomeContratante()}**
+                                    </p>
+                                    <p className="text-sm">
+                                        CPF/CNPJ: **{getDocumentoContratante()}**
+                                    </p>
+                                    <p className="text-sm">
+                                        Endereço: **{getEnderecoCompleto()}**
+                                    </p>
+                                </div>
+
+                                {/* Objeto do Contrato (Baseado na imagem do Editor de Contrato) */}
+                                <div>
+                                    <h3 className="font-bold text-lg mt-6 mb-3">Objeto do Contrato</h3>
+                                    
+                                    <p className="text-sm font-bold uppercase">
+                                        CLÁUSULA 1ª - OBJETO
+                                    </p>
+                                    <p className="text-sm mt-1">
+                                        O presente contrato tem por objeto a prestação de serviços de fornecimento de energia elétrica através do mercado livre de energia, com **desconto sobre a tarifa convencional** aplicada pela distribuidora local.
+                                    </p>
+
+                                    <p className="text-sm mt-4">
+                                        1.1 - A CONTRATADA compromete-se a fornecer energia elétrica com **desconto de [X]%** sobre o valor da tarifa convencional.
+                                    </p>
+                                    
+                                    {/* Dados da Proposta no Contrato */}
+                                    <p className="text-sm mt-4">
+                                        1.2 - O fornecimento será realizado na unidade consumidora número **{proposta.numero_instalacao || '[Número da Instalação]'}** localizada no endereço mencionado acima.
+                                    </p>
+                                    <p className="text-sm mt-2">
+                                        1.3 - O Consumo Médio mensal estimado da unidade é de aproximadamente **{formatNumber(proposta.consumo_kwh || 0)} kWh**.
+                                    </p>
+                                    <p className="text-sm mt-2">
+                                        1.4 - A Distribuidora de Energia local é a **{proposta.distribuidora_energia || '[Distribuidora]'}**.
+                                    </p>
+                                    <p className="text-sm mt-2">
+                                        1.5 - Este contrato é referente a uma proposta criada em **{new Date(proposta.data).toLocaleDateString('pt-BR')}**.
+                                    </p>
+                                    
+                                    {/* Placeholder para o restante do contrato */}
+                                    <p className="text-sm mt-6 text-center font-bold italic text-gray-400">
+                                        [Espaço para o restante das cláusulas do contrato: vigência, pagamento, rescisão, etc., conforme o template completo.]
+                                    </p>
+                                </div>
+
+                                {/* Rodapé - Dados de Referência */}
+                                <div className="mt-10 pt-4 border-t border-gray-200 text-xs text-gray-500">
+                                    <p>Vendedor Responsável: **{proposta.vendedor || '[Vendedor Não Informado]'}**</p>
+                                    <p>Contrato OBY ID: {proposta.numero_contrato || 'N/A'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Botões do Modal de Visualização */}
+                        <div className="p-4 border-t border-gray-200 flex justify-end">
+                            <button onClick={onClose} className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600">
+                                Fechar
+                            </button>
+                            {/* Um botão de Imprimir aproveita a funcionalidade nativa do navegador */}
+                            <button onClick={() => window.print()} className="ml-3 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
+                                🖨️ Imprimir
                             </button>
                         </div>
                     </div>
@@ -192,8 +370,139 @@
             );
         }
 
-        // CONTINUA COM VENDEDORES E ADMIN PANEL...
-        // (Copie o restante do código original aqui, substituindo apenas a função gerarContratoPDF)
+        // --- INÍCIO DA FUNÇÃO DO PAINEL PRINCIPAL (AdminPanel) ---
+
+        // Simulação do componente principal que gerencia o estado e renderiza o grid
+        function AdminPanel() {
+            // Requer o hook useState do React
+            const [propostaParaContrato, setPropostaParaContrato] = React.useState(null);
+            const [modalEdicaoAberta, setModalEdicaoAberta] = React.useState(null);
+            
+            // Simulação de dados (dados reais viriam de uma API/Estado)
+            const [propostas, setPropostas] = React.useState([
+                { id: 1, numero_contrato: 'OBY-2025-195ae', nome: 'Humberto', sobrenome: 'Campos', email: 'humberto@hai.expert', cidade: 'Curitiba', telefone: '41996247863', cpf: '029.312.859-60', tipo_pessoa: 'fisica', vendedor: 'João Silva Santos', data: '2025-01-11', status: 'pendente', logradouro: 'Rua das Flores', numero_endereco: '100', complemento: 'Apto 101', cep: '80000-000', estado: 'PR', consumo_kwh: 500, distribuidora_energia: 'Copel', numero_instalacao: '123456789' },
+                { id: 2, numero_contrato: 'OBY-2025-c7b72', nome: 'Kely', sobrenome: 'Zamperoni', email: 'kely.oliveira@obyenergy.com', cidade: 'Pinhais', telefone: '41996445732', cpf: '033.571.329-74', tipo_pessoa: 'fisica', vendedor: 'João Silva Santos', data: '2025-10-31', status: 'lista_espera', logradouro: 'Rua das Oliveiras', numero_endereco: '50', complemento: 'Casa 2', cep: '83000-000', estado: 'PR', consumo_kwh: 1200, distribuidora_energia: 'Neoenergia', numero_instalacao: '987654321' },
+                // ... mais propostas (simulação de dados da tabela)
+            ]);
+
+            // Funções de manipulação do NOVO MODAL
+            const handleVerContrato = (proposta) => {
+                setPropostaParaContrato(proposta);
+            };
+
+            const handleFecharContrato = () => {
+                setPropostaParaContrato(null);
+            };
+
+            // Funções de manipulação do MODAL DE EDIÇÃO (existente)
+            const handleOpenEdit = (proposta) => {
+                setModalEdicaoAberta(proposta);
+            };
+
+            const handleCloseEdit = () => {
+                setModalEdicaoAberta(null);
+            };
+            
+            // Simulação da função onSave (para evitar erros)
+            const handleSave = (dataToSave) => {
+                // Lógica real de salvar no backend e atualizar a lista
+                console.log("Salvando dados:", dataToSave);
+                setModalEdicaoAberta(null);
+                // Atualizar a lista (simulado)
+                setPropostas(prev => prev.map(p => p.id === dataToSave.id ? { ...p, ...dataToSave } : p));
+            };
+
+
+            return (
+                <div className="min-h-screen bg-gray-100 font-sans">
+                    <header className="bg-white shadow-md p-4 flex justify-between items-center">
+                        <h1 className="text-2xl font-bold text-gray-800">⚡ OBY Energy Admin</h1>
+                        <button className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600">Sair</button>
+                    </header>
+
+                    <nav className="bg-white shadow-md mt-1 p-3 flex border-b border-gray-200">
+                        {/* Simulação das abas */}
+                        {['Propostas', 'Configurações', 'Editor de Contrato', 'Relatório Financeiro', 'Vendedores'].map(tab => (
+                            <button key={tab} className={`px-4 py-2 text-sm font-medium ${tab === 'Propostas' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600 hover:text-blue-500'}`}>
+                                {tab}
+                            </button>
+                        ))}
+                    </nav>
+
+                    <main className="p-6">
+                        <h2 className="text-2xl font-semibold mb-6">Lista de Propostas</h2>
+                        
+                        {/* Simulação do Grid de Propostas (Baseado na image_5f96e0.png) */}
+                        <div className="bg-white shadow-xl rounded-lg overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        {['NOME', 'Nº CONTRATO', 'EMAIL', 'CIDADE', 'TELEFONE', 'CPF', 'VENDEDOR', 'DATA', 'STATUS', 'AÇÕES'].map(header => (
+                                            <th key={header} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{header}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {propostas.map((prop) => (
+                                        <tr key={prop.id} className="hover:bg-yellow-50/50">
+                                            <td className="px-6 py-4 whitespace-nowrap">{prop.nome} {prop.sobrenome}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-blue-600 font-medium">{prop.numero_contrato}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">{prop.email}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">{prop.cidade}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">{prop.telefone}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">{prop.cpf}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">{prop.vendedor}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">{new Date(prop.data).toLocaleDateString('pt-BR')}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${prop.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' : prop.status === 'aprovado' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                    {prop.status === 'pendente' ? '🟡 Pendente' : prop.status === 'lista_espera' ? '🟠 Lista Espera' : prop.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <button className="bg-purple-600 text-white py-2 px-3 rounded-lg text-xs font-bold hover:bg-purple-700">Anexos</button>
+                                                <button onClick={() => handleOpenEdit(prop)} className="bg-blue-600 text-white py-2 px-3 rounded-lg text-xs font-bold hover:bg-blue-700 ml-2">Editar</button>
+                                                {/* O BOTÃO PDF AGORA ABRE O MODAL DE VISUALIZAÇÃO */}
+                                                <button 
+                                                    onClick={() => handleVerContrato(prop)} 
+                                                    className="bg-green-600 text-white py-2 px-3 rounded-lg text-xs font-bold hover:bg-green-700 ml-2"
+                                                >
+                                                    PDF
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </main>
+
+                    {/* MODAIS */}
+
+                    {/* 1. Modal de Edição (original do código) */}
+                    {modalEdicaoAberta && (
+                        <EditPropostaModal 
+                            proposta={modalEdicaoAberta} 
+                            onClose={handleCloseEdit} 
+                            onSave={handleSave}
+                            saving={false} // Simulação do estado de salvamento
+                        />
+                    )}
+
+                    {/* 2. Novo Modal de Visualização de Contrato */}
+                    {propostaParaContrato && (
+                        <ContratoViewerModal 
+                            proposta={propostaParaContrato} 
+                            onClose={handleFecharContrato} 
+                        />
+                    )}
+
+                </div>
+            );
+        }
+
+        // Renderização (Comentada, pois depende do ambiente React/Babel)
+        // ReactDOM.render(<AdminPanel />, document.getElementById('root'));
+        
     </script>
 </body>
 </html>

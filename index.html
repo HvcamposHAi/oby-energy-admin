@@ -27,6 +27,7 @@
         function ContratoModal({ proposta, onClose }) {
             const [contratoTexto, setContratoTexto] = useState('');
             const [loading, setLoading] = useState(true);
+            const [copiado, setCopiado] = useState(false);
 
             useEffect(() => {
                 carregarEMontarContrato();
@@ -76,8 +77,32 @@
                 }
             };
 
-            const handleImprimir = () => {
-                window.print();
+            const handleCopiar = async () => {
+                try {
+                    const nomeCliente = proposta.nome && proposta.sobrenome 
+                        ? `${proposta.nome} ${proposta.sobrenome}`
+                        : proposta.nome_fantasia || 'Sem nome';
+                    
+                    // Adicionar cabeçalho completo com número do contrato e cliente
+                    const textoCompleto = `═══════════════════════════════════════════════════════
+CONTRATO Nº: ${proposta.numero_contrato || 'N/A'}
+Cliente: ${nomeCliente}
+Data: ${new Date().toLocaleDateString('pt-BR')}
+═══════════════════════════════════════════════════════
+
+${contratoTexto}`;
+                    
+                    await navigator.clipboard.writeText(textoCompleto);
+                    setCopiado(true);
+                    
+                    // Resetar após 2 segundos
+                    setTimeout(() => {
+                        setCopiado(false);
+                    }, 2000);
+                } catch (error) {
+                    alert('❌ Erro ao copiar o contrato. Tente novamente.');
+                    console.error('Erro ao copiar:', error);
+                }
             };
 
             return (
@@ -120,10 +145,15 @@
                         {/* Rodapé com Botões */}
                         <div className="p-6 border-t border-gray-200 flex justify-end gap-3 print:hidden">
                             <button 
-                                onClick={handleImprimir}
-                                className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
+                                onClick={handleCopiar}
+                                disabled={loading}
+                                className={`px-6 py-3 rounded-lg font-semibold transition ${
+                                    copiado 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                } disabled:opacity-50`}
                             >
-                                🖨️ Imprimir
+                                {copiado ? '✅ Copiado!' : '📋 Copiar Contrato'}
                             </button>
                             <button 
                                 onClick={onClose}
@@ -133,23 +163,6 @@
                             </button>
                         </div>
                     </div>
-
-                    <style>{`
-                        @media print {
-                            body * {
-                                visibility: hidden;
-                            }
-                            .fixed, .fixed * {
-                                visibility: visible;
-                            }
-                            .print\\:hidden {
-                                display: none !important;
-                            }
-                            .fixed {
-                                position: static;
-                            }
-                        }
-                    `}</style>
                 </div>
             );
         }

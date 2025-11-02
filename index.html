@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <title>OBY Energy Admin - Parte 2</title>
+    
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    </head>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // Importa React e ReactDOM (necessário para o ReactDOM.render)
+        // Importa Hooks do React
         const { useState } = React;
         const { createRoot } = ReactDOM;
 
@@ -198,7 +201,6 @@
         function ContratoViewerModal({ proposta, onClose }) {
             if (!proposta) return null;
 
-            // Função auxiliar para obter o nome/documento correto
             const getNomeContratante = () => {
                 if (proposta.tipo_pessoa === 'juridica') {
                     return proposta.nome_fantasia || `${proposta.nome} ${proposta.sobrenome}`;
@@ -219,7 +221,6 @@
                 return `${proposta.logradouro}${numero}${complemento}, ${cidadeEstado}${cep}`;
             };
             
-            // Função auxiliar para formatar números para exibição
             const formatNumber = (num) => {
                 const numberValue = Number(num) || 0;
                 return numberValue.toLocaleString('pt-BR');
@@ -386,14 +387,13 @@
                                             <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">{prop.vendedor}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">{new Date(prop.data).toLocaleDateString('pt-BR')}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${prop.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' : prop.status === 'aprovado' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${prop.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' : prop.status === 'lista_espera' ? 'bg-red-100 text-red-800' : 'bg-red-100 text-red-800'}`}>
                                                     {prop.status === 'pendente' ? '🟡 Pendente' : prop.status === 'lista_espera' ? '🟠 Lista Espera' : prop.status}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <button className="bg-purple-600 text-white py-2 px-3 rounded-lg text-xs font-bold hover:bg-purple-700">Anexos</button>
                                                 <button onClick={() => handleOpenEdit(prop)} className="bg-blue-600 text-white py-2 px-3 rounded-lg text-xs font-bold hover:bg-blue-700 ml-2">Editar</button>
-                                                {/* O BOTÃO PDF AGORA ABRE O MODAL DE VISUALIZAÇÃO */}
                                                 <button 
                                                     onClick={() => handleVerContrato(prop)} 
                                                     className="bg-green-600 text-white py-2 px-3 rounded-lg text-xs font-bold hover:bg-green-700 ml-2"
@@ -409,8 +409,6 @@
                     </main>
 
                     {/* MODAIS */}
-
-                    {/* 1. Modal de Edição (original do código) */}
                     {modalEdicaoAberta && (
                         <EditPropostaModal 
                             proposta={modalEdicaoAberta} 
@@ -420,7 +418,6 @@
                         />
                     )}
 
-                    {/* 2. Novo Modal de Visualização de Contrato */}
                     {propostaParaContrato && (
                         <ContratoViewerModal 
                             proposta={propostaParaContrato} 
@@ -432,7 +429,7 @@
             );
         }
 
-        // 3. INSTRUÇÃO DE RENDERIZAÇÃO FINAL: ISSO FAZ O CÓDIGO APARECER!
+        // INSTRUÇÃO DE RENDERIZAÇÃO FINAL: Monta o componente principal no DOM
         const container = document.getElementById('root');
         const root = createRoot(container);
         root.render(<AdminPanel />);

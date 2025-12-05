@@ -1395,9 +1395,13 @@
                                                                     <button onClick={() => handleEditClick(proposta)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
                                                                         📝 Editar
                                                                     </button>
-                                                                    {(!proposta.numero_contrato || proposta.numero_contrato === '-') && (
+                                                                    {(!proposta.numero_contrato || proposta.numero_contrato === '-') ? (
                                                                         <button onClick={() => gerarNumeroContrato(proposta)} className="px-3 py-1 bg-orange-600 text-white text-xs rounded hover:bg-orange-700">
                                                                             🔢 Gerar Nº
+                                                                        </button>
+                                                                    ) : (
+                                                                        <button onClick={() => window.open('contratos.html', '_blank')} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                                                            📄 Contrato
                                                                         </button>
                                                                     )}
                                                                 </td>

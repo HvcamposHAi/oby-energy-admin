@@ -8,6 +8,8 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+    <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -1099,15 +1101,50 @@
                         .replace(/\[Custo OBY\]/g, `R$ ${parseFloat(proposta.simulacao_conta_nova || 0).toFixed(2)}`)
                         .replace(/\[Economia Mensal\]/g, `R$ ${parseFloat(proposta.simulacao_economia_mensal || 0).toFixed(2)}`);
                     
-                    // Baixar como TXT
-                    const blob = new Blob([contratoCompleto], { type: 'text/plain;charset=utf-8' });
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = `Contrato_${proposta.numero_contrato || 'OBY'}.txt`;
-                    link.click();
+                    // Criar documento DOCX
+                    const paragrafos = contratoCompleto.split('\n').map(linha => {
+                        return new docx.Paragraph({
+                            text: linha,
+                            spacing: { after: 200 }
+                        });
+                    });
                     
-                    alert('✅ Contrato gerado e baixado!');
+                    const doc = new docx.Document({
+                        sections: [{
+                            properties: {},
+                            children: [
+                                new docx.Paragraph({
+                                    text: "CONTRATO DE FORNECIMENTO DE ENERGIA",
+                                    heading: docx.HeadingLevel.HEADING_1,
+                                    alignment: docx.AlignmentType.CENTER,
+                                    spacing: { after: 400 }
+                                }),
+                                new docx.Paragraph({
+                                    text: `Contrato Nº: ${proposta.numero_contrato || 'N/A'}`,
+                                    bold: true,
+                                    spacing: { after: 400 }
+                                }),
+                                new docx.Paragraph({
+                                    text: `Cliente: ${nomeCliente}`,
+                                    spacing: { after: 200 }
+                                }),
+                                new docx.Paragraph({
+                                    text: `CPF/CNPJ: ${cpfCnpj || 'N/A'}`,
+                                    spacing: { after: 400 }
+                                }),
+                                ...paragrafos
+                            ]
+                        }]
+                    });
+                    
+                    // Gerar e baixar
+                    docx.Packer.toBlob(doc).then(blob => {
+                        saveAs(blob, `Contrato_${proposta.numero_contrato || 'OBY'}.docx`);
+                        alert('✅ Contrato DOCX gerado e baixado!');
+                    });
+                    
                 } catch (error) {
+                    console.error('Erro:', error);
                     alert('❌ Erro ao gerar contrato: ' + error.message);
                 }
             };

@@ -1053,6 +1053,65 @@
                 }
             };
 
+            const gerarEBaixarContrato = async (proposta) => {
+                try {
+                    // Buscar templates
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?select=*&order=ordem.asc`, {
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': SUPABASE_KEY
+                        }
+                    });
+                    const templates = await response.json();
+                    let contratoCompleto = templates.map(t => t.texto).join('\n\n');
+                    
+                    // Preparar dados
+                    const nomeCliente = proposta.nome && proposta.sobrenome 
+                        ? `${proposta.nome} ${proposta.sobrenome}`
+                        : proposta.nome_fantasia || 'Sem nome';
+                    
+                    const cpfCnpj = proposta.tipo_pessoa === 'fisica' ? proposta.cpf : proposta.cnpj;
+                    const enderecoCompleto = `${proposta.logradouro || ''}, ${proposta.numero_endereco || ''} ${proposta.complemento ? '- ' + proposta.complemento : ''}, ${proposta.bairro || ''}, ${proposta.cidade || ''} - ${proposta.estado || ''}`.trim();
+                    const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    
+                    // Substituir placeholders
+                    contratoCompleto = contratoCompleto
+                        .replace(/\[Nome do Cliente\]/g, nomeCliente)
+                        .replace(/\[CPF\/CNPJ\]/g, cpfCnpj || 'N/A')
+                        .replace(/\[Email\]/g, proposta.email || 'N/A')
+                        .replace(/\[Telefone\]/g, proposta.telefone || 'N/A')
+                        .replace(/\[Endereço Completo\]/g, enderecoCompleto)
+                        .replace(/\[Logradouro\]/g, proposta.logradouro || 'N/A')
+                        .replace(/\[Número\]/g, proposta.numero_endereco || 'N/A')
+                        .replace(/\[Complemento\]/g, proposta.complemento || '')
+                        .replace(/\[Bairro\]/g, proposta.bairro || 'N/A')
+                        .replace(/\[Cidade\]/g, proposta.cidade || 'N/A')
+                        .replace(/\[Estado\]/g, proposta.estado || 'N/A')
+                        .replace(/\[CEP\]/g, proposta.cep || 'N/A')
+                        .replace(/\[Número da Instalação\]/g, proposta.numero_instalacao || 'N/A')
+                        .replace(/\[Distribuidora\]/g, proposta.distribuidora_energia || 'N/A')
+                        .replace(/\[Consumo\]/g, proposta.consumo_kwh || '0')
+                        .replace(/\[Tipo de Conexão\]/g, proposta.tipo_conexao || 'N/A')
+                        .replace(/\[Número do Contrato\]/g, proposta.numero_contrato || 'N/A')
+                        .replace(/\[Data\]/g, dataAtual)
+                        .replace(/\[X\]/g, proposta.desconto_aplicado || '15')
+                        .replace(/\[Custo Atual\]/g, `R$ ${parseFloat(proposta.simulacao_conta_atual || 0).toFixed(2)}`)
+                        .replace(/\[Custo OBY\]/g, `R$ ${parseFloat(proposta.simulacao_conta_nova || 0).toFixed(2)}`)
+                        .replace(/\[Economia Mensal\]/g, `R$ ${parseFloat(proposta.simulacao_economia_mensal || 0).toFixed(2)}`);
+                    
+                    // Baixar como TXT
+                    const blob = new Blob([contratoCompleto], { type: 'text/plain;charset=utf-8' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `Contrato_${proposta.numero_contrato || 'OBY'}.txt`;
+                    link.click();
+                    
+                    alert('✅ Contrato gerado e baixado!');
+                } catch (error) {
+                    alert('❌ Erro ao gerar contrato: ' + error.message);
+                }
+            };
+
             const formatarData = (dataISO) => {
                 const data = new Date(dataISO);
                 return data.toLocaleDateString('pt-BR');
@@ -1400,7 +1459,7 @@
                                                                             🔢 Gerar Nº
                                                                         </button>
                                                                     ) : (
-                                                                        <button onClick={() => window.open('contratos.html', '_blank')} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                                                        <button onClick={() => gerarEBaixarContrato(proposta)} className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
                                                                             📄 Contrato
                                                                         </button>
                                                                     )}

@@ -1057,17 +1057,26 @@
 
             const gerarEBaixarContrato = async (proposta) => {
                 try {
-                    // Buscar templates
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?select=*&order=ordem.asc`, {
+                    // Buscar template do Supabase (novo formato - campo único)
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?select=template_completo&limit=1`, {
                         headers: {
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
                             'apikey': SUPABASE_KEY
                         }
                     });
-                    const templates = await response.json();
-                    let contratoCompleto = templates.map(t => t.texto).join('\n\n');
                     
-                    // Preparar dados
+                    const data = await response.json();
+                    
+                    // Pegar o template completo do primeiro (e único) registro
+                    let contratoCompleto = '';
+                    if (data && data.length > 0 && data[0].template_completo) {
+                        contratoCompleto = data[0].template_completo;
+                    } else {
+                        // Fallback para localStorage se não encontrar no Supabase
+                        contratoCompleto = localStorage.getItem('oby_template_contrato') || 'Template não configurado. Configure em Gestor de Templates.';
+                    }
+                    
+                    // Preparar dados do cliente
                     const nomeCliente = proposta.nome && proposta.sobrenome 
                         ? `${proposta.nome} ${proposta.sobrenome}`
                         : proposta.nome_fantasia || 'Sem nome';
@@ -1076,64 +1085,49 @@
                     const enderecoCompleto = `${proposta.logradouro || ''}, ${proposta.numero_endereco || ''} ${proposta.complemento ? '- ' + proposta.complemento : ''}, ${proposta.bairro || ''}, ${proposta.cidade || ''} - ${proposta.estado || ''}`.trim();
                     const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     
-                    // Substituir placeholders
+                    // Substituir TODOS os placeholders
                     contratoCompleto = contratoCompleto
-                        .replace(/\[Nome do Cliente\]/g, nomeCliente)
-                        .replace(/\[CPF\/CNPJ\]/g, cpfCnpj || 'N/A')
+                        .replace(/\[Nome_do_Cliente\]/g, nomeCliente)
+                        .replace(/\[CPF_CNPJ\]/g, cpfCnpj || 'N/A')
                         .replace(/\[Email\]/g, proposta.email || 'N/A')
                         .replace(/\[Telefone\]/g, proposta.telefone || 'N/A')
-                        .replace(/\[Endereço Completo\]/g, enderecoCompleto)
+                        .replace(/\[Endereco_Completo\]/g, enderecoCompleto)
                         .replace(/\[Logradouro\]/g, proposta.logradouro || 'N/A')
-                        .replace(/\[Número\]/g, proposta.numero_endereco || 'N/A')
+                        .replace(/\[Numero\]/g, proposta.numero_endereco || 'N/A')
                         .replace(/\[Complemento\]/g, proposta.complemento || '')
                         .replace(/\[Bairro\]/g, proposta.bairro || 'N/A')
                         .replace(/\[Cidade\]/g, proposta.cidade || 'N/A')
                         .replace(/\[Estado\]/g, proposta.estado || 'N/A')
                         .replace(/\[CEP\]/g, proposta.cep || 'N/A')
-                        .replace(/\[Número da Instalação\]/g, proposta.numero_instalacao || 'N/A')
+                        .replace(/\[Numero_da_Instalacao\]/g, proposta.numero_instalacao || 'N/A')
                         .replace(/\[Distribuidora\]/g, proposta.distribuidora_energia || 'N/A')
                         .replace(/\[Consumo\]/g, proposta.consumo_kwh || '0')
-                        .replace(/\[Tipo de Conexão\]/g, proposta.tipo_conexao || 'N/A')
-                        .replace(/\[Número do Contrato\]/g, proposta.numero_contrato || 'N/A')
+                        .replace(/\[Tipo_de_Conexao\]/g, proposta.tipo_conexao || 'N/A')
+                        .replace(/\[Numero_do_Contrato\]/g, proposta.numero_contrato || 'N/A')
                         .replace(/\[Data\]/g, dataAtual)
-                        .replace(/\[X\]/g, proposta.desconto_aplicado || '15')
-                        .replace(/\[Custo Atual\]/g, `R$ ${parseFloat(proposta.simulacao_conta_atual || 0).toFixed(2)}`)
-                        .replace(/\[Custo OBY\]/g, `R$ ${parseFloat(proposta.simulacao_conta_nova || 0).toFixed(2)}`)
-                        .replace(/\[Economia Mensal\]/g, `R$ ${parseFloat(proposta.simulacao_economia_mensal || 0).toFixed(2)}`);
+                        .replace(/\[Desconto_Percentual\]/g, proposta.desconto_aplicado || '15')
+                        .replace(/\[Custo_Atual\]/g, `R$ ${parseFloat(proposta.simulacao_conta_atual || 0).toFixed(2)}`)
+                        .replace(/\[Custo_OBY\]/g, `R$ ${parseFloat(proposta.simulacao_conta_nova || 0).toFixed(2)}`)
+                        .replace(/\[Economia_Mensal\]/g, `R$ ${parseFloat(proposta.simulacao_economia_mensal || 0).toFixed(2)}`);
                     
                     // Criar documento DOCX
                     const paragrafos = contratoCompleto.split('\n').map(linha => {
+                        const isTitulo = linha === linha.toUpperCase() && linha.length > 0 && linha.length < 100;
                         return new docx.Paragraph({
                             text: linha,
-                            spacing: { after: 200 }
+                            bold: isTitulo,
+                            spacing: { after: isTitulo ? 300 : 200 }
                         });
                     });
                     
                     const doc = new docx.Document({
                         sections: [{
-                            properties: {},
-                            children: [
-                                new docx.Paragraph({
-                                    text: "CONTRATO DE FORNECIMENTO DE ENERGIA",
-                                    heading: docx.HeadingLevel.HEADING_1,
-                                    alignment: docx.AlignmentType.CENTER,
-                                    spacing: { after: 400 }
-                                }),
-                                new docx.Paragraph({
-                                    text: `Contrato Nº: ${proposta.numero_contrato || 'N/A'}`,
-                                    bold: true,
-                                    spacing: { after: 400 }
-                                }),
-                                new docx.Paragraph({
-                                    text: `Cliente: ${nomeCliente}`,
-                                    spacing: { after: 200 }
-                                }),
-                                new docx.Paragraph({
-                                    text: `CPF/CNPJ: ${cpfCnpj || 'N/A'}`,
-                                    spacing: { after: 400 }
-                                }),
-                                ...paragrafos
-                            ]
+                            properties: {
+                                page: {
+                                    margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
+                                }
+                            },
+                            children: paragrafos
                         }]
                     });
                     

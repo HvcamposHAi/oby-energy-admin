@@ -165,7 +165,7 @@
                 'nome', 'sobrenome', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
                 'cpf', 'cnpj', 'logradouro', 'numero_endereco', 'complemento', 'consumo_kwh', 
                 'distribuidora_energia', 'status', 'tipo_pessoa', 'numero_instalacao', 
-                'tipo_conexao', 'vendedor' 
+                'tipo_conexao', 'vendedor', 'representante_legal_1', 'cpf_representante_1', 'rg_representante_1'
             ];
 
             const [formData, setFormData] = useState({
@@ -179,7 +179,10 @@
                 complemento: proposta.complemento || '',
                 consumo_kwh: proposta.consumo_kwh || 0,
                 distribuidora_energia: proposta.distribuidora_energia || '',
-                vendedor: proposta.vendedor || ''
+                vendedor: proposta.vendedor || '',
+                representante_legal_1: proposta.representante_legal_1 || '',
+                cpf_representante_1: proposta.cpf_representante_1 || '',
+                rg_representante_1: proposta.rg_representante_1 || ''
             });
 
             const handleChange = (e) => {
@@ -272,6 +275,25 @@
                                         <label className={labelClass}>Vendedor</label>
                                         <input type="text" name="vendedor" value={formData.vendedor || ''} onChange={handleChange} className={inputClass} />
                                     </div>
+                                    {formData.tipo_pessoa === 'juridica' && (
+                                        <>
+                                            <div className="md:col-span-2 border-t pt-4">
+                                                <h4 className="font-semibold text-blue-800 mb-3">👤 Representante Legal</h4>
+                                            </div>
+                                            <div>
+                                                <label className={labelClass}>Nome do Representante</label>
+                                                <input type="text" name="representante_legal_1" value={formData.representante_legal_1 || ''} onChange={handleChange} className={inputClass} />
+                                            </div>
+                                            <div>
+                                                <label className={labelClass}>CPF do Representante</label>
+                                                <input type="text" name="cpf_representante_1" value={formData.cpf_representante_1 || ''} onChange={handleChange} className={inputClass} />
+                                            </div>
+                                            <div>
+                                                <label className={labelClass}>RG do Representante</label>
+                                                <input type="text" name="rg_representante_1" value={formData.rg_representante_1 || ''} onChange={handleChange} className={inputClass} />
+                                            </div>
+                                        </>
+                                    )}
                                     <div>
                                         <label className={labelClass}>Status da Proposta</label>
                                         <select name="status" value={formData.status || 'pendente'} onChange={handleChange} className={inputClass}>
@@ -1091,6 +1113,9 @@
                         .replace(/\[CPF_CNPJ\]/g, cpfCnpj || 'N/A')
                         .replace(/\[Email\]/g, proposta.email || 'N/A')
                         .replace(/\[Telefone\]/g, proposta.telefone || 'N/A')
+                        .replace(/\[Representante_Legal\]/g, proposta.representante_legal_1 || proposta.representante_legal || nomeCliente)
+                        .replace(/\[CPF_Representante_Legal\]/g, proposta.cpf_representante_1 || proposta.cpf_representante || 'N/A')
+                        .replace(/\[RG_Representante_Legal\]/g, proposta.rg_representante_1 || proposta.rg_representante || 'N/A')
                         .replace(/\[Endereco_Completo\]/g, enderecoCompleto)
                         .replace(/\[Logradouro\]/g, proposta.logradouro || 'N/A')
                         .replace(/\[Numero\]/g, proposta.numero_endereco || 'N/A')

@@ -165,7 +165,8 @@
                 'nome', 'sobrenome', 'nome_fantasia', 'email', 'telefone', 'cep', 'cidade', 'estado', 
                 'cpf', 'cnpj', 'logradouro', 'numero_endereco', 'complemento', 'consumo_kwh', 
                 'distribuidora_energia', 'status', 'tipo_pessoa', 'numero_instalacao', 
-                'tipo_conexao', 'vendedor', 'representante_legal_1', 'cpf_representante_1', 'rg_representante_1'
+                'tipo_conexao', 'vendedor', 'representante_legal_1', 'cpf_representante_1', 
+                'rg_representante_1', 'email_representante_1'
             ];
 
             const [formData, setFormData] = useState({
@@ -182,7 +183,8 @@
                 vendedor: proposta.vendedor || '',
                 representante_legal_1: proposta.representante_legal_1 || '',
                 cpf_representante_1: proposta.cpf_representante_1 || '',
-                rg_representante_1: proposta.rg_representante_1 || ''
+                rg_representante_1: proposta.rg_representante_1 || '',
+                email_representante_1: proposta.email_representante_1 || ''
             });
 
             const handleChange = (e) => {
@@ -292,6 +294,10 @@
                                                 <label className={labelClass}>RG do Representante</label>
                                                 <input type="text" name="rg_representante_1" value={formData.rg_representante_1 || ''} onChange={handleChange} className={inputClass} />
                                             </div>
+                                            <div>
+                                                <label className={labelClass}>Email do Representante</label>
+                                                <input type="email" name="email_representante_1" value={formData.email_representante_1 || ''} onChange={handleChange} className={inputClass} />
+                                            </div>
                                         </>
                                     )}
                                     <div>
@@ -363,8 +369,7 @@
                 </div>
             );
         }
-
-        // --- COMPONENTE: GESTÃO DE VENDEDORES ---
+// --- COMPONENTE: GESTÃO DE VENDEDORES ---
         function VendedoresGestao() {
             const [vendedores, setVendedores] = useState([]);
             const [loading, setLoading] = useState(false);
@@ -811,8 +816,7 @@
                 </div>
             );
         }
-
-        // --- COMPONENTE PRINCIPAL: ADMIN PANEL ---
+// --- COMPONENTE PRINCIPAL: ADMIN PANEL ---
         function AdminPanel() {
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [username, setUsername] = useState('');
@@ -1079,7 +1083,6 @@
 
             const gerarEBaixarContrato = async (proposta) => {
                 try {
-                    // Buscar template do Supabase (novo formato - campo único)
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/contrato_templates?select=template_completo&limit=1`, {
                         headers: {
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
@@ -1089,16 +1092,13 @@
                     
                     const data = await response.json();
                     
-                    // Pegar o template completo do primeiro (e único) registro
                     let contratoCompleto = '';
                     if (data && data.length > 0 && data[0].template_completo) {
                         contratoCompleto = data[0].template_completo;
                     } else {
-                        // Fallback para localStorage se não encontrar no Supabase
                         contratoCompleto = localStorage.getItem('oby_template_contrato') || 'Template não configurado. Configure em Gestor de Templates.';
                     }
                     
-                    // Preparar dados do cliente
                     const nomeCliente = proposta.nome && proposta.sobrenome 
                         ? `${proposta.nome} ${proposta.sobrenome}`
                         : proposta.nome_fantasia || 'Sem nome';
@@ -1107,7 +1107,6 @@
                     const enderecoCompleto = `${proposta.logradouro || ''}, ${proposta.numero_endereco || ''} ${proposta.complemento ? '- ' + proposta.complemento : ''}, ${proposta.bairro || ''}, ${proposta.cidade || ''} - ${proposta.estado || ''}`.trim();
                     const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     
-                    // Substituir TODOS os placeholders
                     contratoCompleto = contratoCompleto
                         .replace(/\[Nome_do_Cliente\]/g, nomeCliente)
                         .replace(/\[CPF_CNPJ\]/g, cpfCnpj || 'N/A')
@@ -1116,6 +1115,7 @@
                         .replace(/\[Representante_Legal\]/g, proposta.representante_legal_1 || proposta.representante_legal || nomeCliente)
                         .replace(/\[CPF_Representante_Legal\]/g, proposta.cpf_representante_1 || proposta.cpf_representante || 'N/A')
                         .replace(/\[RG_Representante_Legal\]/g, proposta.rg_representante_1 || proposta.rg_representante || 'N/A')
+                        .replace(/\[Email_Representante_Legal\]/g, proposta.email_representante_1 || proposta.email_representante || 'N/A')
                         .replace(/\[Endereco_Completo\]/g, enderecoCompleto)
                         .replace(/\[Logradouro\]/g, proposta.logradouro || 'N/A')
                         .replace(/\[Numero\]/g, proposta.numero_endereco || 'N/A')
@@ -1135,7 +1135,6 @@
                         .replace(/\[Custo_OBY\]/g, `R$ ${parseFloat(proposta.simulacao_conta_nova || 0).toFixed(2)}`)
                         .replace(/\[Economia_Mensal\]/g, `R$ ${parseFloat(proposta.simulacao_economia_mensal || 0).toFixed(2)}`);
                     
-                    // Criar documento DOCX
                     const paragrafos = contratoCompleto.split('\n').map(linha => {
                         const isTitulo = linha === linha.toUpperCase() && linha.length > 0 && linha.length < 100;
                         return new docx.Paragraph({
@@ -1156,7 +1155,6 @@
                         }]
                     });
                     
-                    // Gerar e baixar
                     docx.Packer.toBlob(doc).then(blob => {
                         saveAs(blob, `Contrato_${proposta.numero_contrato || 'OBY'}.docx`);
                         alert('✅ Contrato DOCX gerado e baixado!');

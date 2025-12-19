@@ -816,7 +816,8 @@
                 </div>
             );
         }
-// --- COMPONENTE PRINCIPAL: ADMIN PANEL ---
+
+        // --- COMPONENTE PRINCIPAL: ADMIN PANEL ---
         function AdminPanel() {
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [username, setUsername] = useState('');
@@ -1107,6 +1108,7 @@
                     const enderecoCompleto = `${proposta.logradouro || ''}, ${proposta.numero_endereco || ''} ${proposta.complemento ? '- ' + proposta.complemento : ''}, ${proposta.bairro || ''}, ${proposta.cidade || ''} - ${proposta.estado || ''}`.trim();
                     const dataAtual = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     
+                    // ⭐ MODIFICAÇÃO CRÍTICA: Adicionada linha para Email_Representante_Legal
                     contratoCompleto = contratoCompleto
                         .replace(/\[Nome_do_Cliente\]/g, nomeCliente)
                         .replace(/\[CPF_CNPJ\]/g, cpfCnpj || 'N/A')
@@ -1115,7 +1117,7 @@
                         .replace(/\[Representante_Legal\]/g, proposta.representante_legal_1 || proposta.representante_legal || nomeCliente)
                         .replace(/\[CPF_Representante_Legal\]/g, proposta.cpf_representante_1 || proposta.cpf_representante || 'N/A')
                         .replace(/\[RG_Representante_Legal\]/g, proposta.rg_representante_1 || proposta.rg_representante || 'N/A')
-                        .replace(/\[Email_Representante_Legal\]/g, proposta.email_representante_1 || proposta.email_representante || 'N/A')
+                        .replace(/\[Email_Representante_Legal\]/g, proposta.email_representante_1 || proposta.email || 'N/A')
                         .replace(/\[Endereco_Completo\]/g, enderecoCompleto)
                         .replace(/\[Logradouro\]/g, proposta.logradouro || 'N/A')
                         .replace(/\[Numero\]/g, proposta.numero_endereco || 'N/A')
@@ -1170,8 +1172,7 @@
                 const data = new Date(dataISO);
                 return data.toLocaleDateString('pt-BR');
             };
-
-            const handleSubstituirAnexo = async (e, propostaId, campo, nomeCampo) => {
+const handleSubstituirAnexo = async (e, propostaId, campo, nomeCampo) => {
                 const file = e.target.files[0];
                 if (!file) return;
 
